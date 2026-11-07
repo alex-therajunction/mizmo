@@ -25,9 +25,10 @@ export function Avatar({
   size = 44,
   className = '',
 }: AvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false)
+  const [failedPicture, setFailedPicture] = useState<string | null>(null)
   const hue = hueFor(pubkey)
   const initial = (name?.trim()?.[0] || 'm').toUpperCase()
+  const showPicture = Boolean(picture && failedPicture !== picture)
   const style = {
     '--avatar-a': `hsl(${hue} 68% 68%)`,
     '--avatar-b': `hsl(${(hue + 75) % 360} 64% 48%)`,
@@ -41,11 +42,11 @@ export function Avatar({
       className={`avatar ${className}`}
       style={style}
     >
-      {picture && !imageFailed ? (
+      {showPicture && picture ? (
         <img
           alt=""
           loading="lazy"
-          onError={() => setImageFailed(true)}
+          onError={() => setFailedPicture(picture)}
           referrerPolicy="no-referrer"
           src={picture}
         />

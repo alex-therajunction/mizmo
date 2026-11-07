@@ -3,21 +3,28 @@ import type { SVGProps } from 'react'
 export type IconName =
   | 'arrow-right'
   | 'check'
+  | 'chevron-down'
+  | 'chevron-up'
   | 'clock'
   | 'close'
   | 'copy'
+  | 'grip'
   | 'inbox'
   | 'key'
   | 'link'
   | 'logout'
   | 'outbox'
+  | 'plus'
   | 'send'
   | 'settings'
   | 'spark'
+  | 'trash'
 
 const paths: Record<IconName, React.ReactNode> = {
   'arrow-right': <path d="M5 12h14m-5-5 5 5-5 5" />,
   check: <path d="m5 12 4 4L19 6" />,
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
+  'chevron-up': <path d="m6 15 6-6 6 6" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="8.5" />
@@ -29,6 +36,16 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <rect x="8" y="8" width="11" height="11" rx="2" />
       <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  grip: (
+    <>
+      <circle cx="9" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="17" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="17" r="1" fill="currentColor" stroke="none" />
     </>
   ),
   inbox: (
@@ -63,6 +80,7 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="m12 5.5 0-2m-2 2 2-2 2 2" />
     </>
   ),
+  plus: <path d="M12 5v14M5 12h14" />,
   send: <path d="m21 3-7.5 18-3-8.5L2 9.5 21 3Z" />,
   settings: (
     <>
@@ -73,6 +91,12 @@ const paths: Record<IconName, React.ReactNode> = {
   spark: (
     <>
       <path d="M12 2c.5 5.5 4.5 9.5 10 10-5.5.5-9.5 4.5-10 10-.5-5.5-4.5-9.5-10-10 5.5-.5 9.5-4.5 10-10Z" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M5 7h14m-9-3h4l1 3H9l1-3Z" />
+      <path d="m7 7 1 12h8l1-12M10 11v4m4-4v4" />
     </>
   ),
 }

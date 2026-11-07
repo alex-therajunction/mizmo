@@ -5,6 +5,11 @@ ask, with an optional deadline.
 
 - Visiting `/<npub>` lets a signed-in user send a mizmo to that contact.
 - Visiting your own `/<npub>` opens **mi** (received) and **mo** (sent).
+- Profiles use public Nostr metadata, including a name and a resized avatar
+  embedded as a data URL.
+- Contacts come from the signed-in user's NIP-02 contact list and can be added,
+  removed, and used to filter both boxes.
+- Inbox order and per-contact outbox order are private, synced app data.
 - Keys are generated or imported in the browser and stored in `localStorage`.
 - There is no application server. The browser connects directly to Nostr relays.
 
@@ -41,12 +46,28 @@ The inbox subscribes with `#p=<own pubkey>` and `#t=mizmo`. The outbox subscribe
 with `authors=<own pubkey>` and `#t=mizmo`. Asks are encrypted, while the
 recipient and deadline tags are public relay metadata.
 
+## Profiles, contacts, and order
+
+- **Profile:** kind `0` metadata with `name`, `display_name`, and optionally
+  `picture`. Pictures are center-cropped and resized in the browser, then
+  embedded as a data URL. Other metadata fields are preserved when editing.
+- **Contacts:** NIP-02 kind `3` contact list. The app preserves existing `p`
+  tags, relay hints, and petnames. Successful sends add new recipients.
+- **Order:** kind `30078` app data with `d=mizmo.me/rankings`, encrypted
+  NIP-44 to the user's own key. Its payload is
+  `{ version: 1, updatedAt, inbox: string[], outbox: { [pubkey]: string[] } }`.
+  The browser also keeps a local copy so ordering survives relay failures.
+
 ## Keys and privacy
 
 The private key is stored as plain text in the browser's local storage so the app
 can sign and decrypt after a reload. Anyone with access to the browser profile
 can use it. Users can reveal/copy their `nsec` in settings, but signing out or
 clearing site data without a backup loses the identity.
+
+Profile metadata and contact-list events are public, as required by Nostr.
+Mizmo asks and private ranking data are encrypted. Some relays may reject large
+profile events; avatars are therefore resized before publishing.
 
 Default relays are configured in `src/lib/nostr.ts`.
 

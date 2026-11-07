@@ -4,7 +4,8 @@ import { AuthPanel } from '../components/AuthPanel'
 import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
 import { useIdentity } from '../context/useIdentity'
-import { copyText, shortenId } from '../lib/format'
+import { useProfiles } from '../hooks/useProfiles'
+import { copyText, displayName } from '../lib/format'
 import { normalizeNostrId } from '../lib/nostr'
 
 export function HomePage() {
@@ -126,10 +127,16 @@ function SignedInCard() {
   const [copied, setCopied] = useState(false)
   const [lookup, setLookup] = useState('')
   const [lookupError, setLookupError] = useState('')
+  const { profiles } = useProfiles(identity ? [identity.pubkey] : [])
 
   if (!identity) return null
 
   const address = `${window.location.origin}/${identity.npub}`
+  const profile = profiles[identity.pubkey] ?? null
+  const name = displayName(
+    identity.pubkey,
+    profile?.displayName || profile?.name,
+  )
 
   const copyAddress = async () => {
     try {
@@ -158,13 +165,14 @@ function SignedInCard() {
     <section className="signed-in-card">
       <div className="signed-in-head">
         <Avatar
-          name={shortenId(identity.pubkey, 1, 1)}
+          name={name}
+          picture={profile?.picture}
           pubkey={identity.pubkey}
           size={58}
         />
         <div>
           <p className="settings-label">This is you</p>
-          <p className="signed-in-id">{shortenId(identity.pubkey, 12, 8)}</p>
+          <p className="signed-in-id">{name}</p>
         </div>
         <span className="live-pill">
           <span className="status-dot" /> ready
@@ -224,7 +232,7 @@ function ExampleStrip() {
           “Could you look at the launch copy before Thursday?”
         </p>
         <div className="example-foot">
-          <span>From npub1garden…</span>
+          <span>From John</span>
           <span className="deadline-pill">
             <Icon name="clock" size={14} /> Thu, 5:00 PM
           </span>

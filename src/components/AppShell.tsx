@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useIdentity } from '../context/useIdentity'
-import { copyText, shortenId } from '../lib/format'
+import { useProfiles } from '../hooks/useProfiles'
+import { copyText, displayName } from '../lib/format'
 import { RELAYS } from '../lib/nostr'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { Modal } from './Modal'
+import { ProfileEditor } from './ProfileEditor'
 
 type AppShellProps = {
   children: ReactNode
@@ -16,6 +18,14 @@ export function AppShell({ children, onOpenAuth }: AppShellProps) {
   const { identity } = useIdentity()
   const navigate = useNavigate()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const { profiles } = useProfiles(identity ? [identity.pubkey] : [])
+  const ownProfile = identity ? profiles[identity.pubkey] : null
+  const ownName = identity
+    ? displayName(
+        identity.pubkey,
+        ownProfile?.displayName || ownProfile?.name,
+      )
+    : ''
 
   return (
     <div className="app-shell">
@@ -37,8 +47,13 @@ export function AppShell({ children, onOpenAuth }: AppShellProps) {
           {identity ? (
             <>
               <Link className="identity-chip" to={`/${identity.npub}`}>
-                <Avatar pubkey={identity.pubkey} size={28} />
-                <span>{shortenId(identity.pubkey, 7, 5)}</span>
+                <Avatar
+                  name={ownName}
+                  picture={ownProfile?.picture}
+                  pubkey={identity.pubkey}
+                  size={28}
+                />
+                <span>{ownName}</span>
                 <span className="identity-chip-label">my mi / mo</span>
               </Link>
               <button
@@ -96,6 +111,7 @@ function SettingsModal({
   onSignedOut: () => void
 }) {
   const { identity, signOut } = useIdentity()
+  const { profiles } = useProfiles(identity ? [identity.pubkey] : [])
   const [showKey, setShowKey] = useState(false)
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const [copied, setCopied] = useState<'address' | 'key' | null>(null)
@@ -103,6 +119,12 @@ function SettingsModal({
   if (!identity) return null
 
   const address = `${window.location.origin}/${identity.npub}`
+  const profile = profiles[identity.pubkey] ?? null
+  const profileLoaded = identity.pubkey in profiles
+  const name = displayName(
+    identity.pubkey,
+    profile?.displayName || profile?.name,
+  )
 
   const copy = async (value: string, kind: 'address' | 'key') => {
     try {
@@ -131,12 +153,13 @@ function SettingsModal({
     >
       <div className="settings-profile">
         <Avatar
-          name={shortenId(identity.pubkey, 1, 1)}
+          name={name}
+          picture={profile?.picture}
           pubkey={identity.pubkey}
           size={52}
         />
         <div>
-          <p className="settings-label">Your mizmo address</p>
+          <p className="settings-label">{name}</p>
           <p className="settings-address">{address}</p>
         </div>
       </div>
@@ -159,6 +182,12 @@ function SettingsModal({
           <Icon name="arrow-right" size={16} />
         </Link>
       </div>
+
+      {profileLoaded && (
+        <div className="settings-section">
+          <ProfileEditor identity={identity} profile={profile} />
+        </div>
+      )}
 
       <div className="settings-section">
         <div className="settings-heading">

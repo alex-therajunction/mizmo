@@ -266,6 +266,12 @@ code {
   letter-spacing: 0.01em;
 }
 
+.identity-chip > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon-button {
   display: inline-grid;
   width: 42px;
@@ -286,6 +292,12 @@ code {
   background: var(--paper-card);
   border-color: var(--line-strong);
   transform: rotate(4deg);
+}
+
+.icon-button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+  transform: none;
 }
 
 .site-main {
@@ -671,6 +683,18 @@ code {
   line-height: 1.55;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
 .field {
   position: relative;
   display: flex;
@@ -765,6 +789,13 @@ code {
   line-height: 1.45;
 }
 
+.form-success {
+  color: var(--green);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .signed-in-card {
   padding: clamp(24px, 3.4vw, 32px);
   box-shadow: 0 20px 45px rgba(53, 48, 38, 0.09);
@@ -792,8 +823,9 @@ code {
 .signed-in-id {
   margin-top: 3px;
   overflow: hidden;
-  font-family: var(--mono);
-  font-size: 0.78rem;
+  font-family: var(--sans);
+  font-size: 0.84rem;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1224,6 +1256,99 @@ code {
   font-size: 0.65rem;
 }
 
+.contact-filter {
+  padding: 15px 22px 17px;
+  background: rgba(255, 253, 247, 0.38);
+  border-bottom: 1px solid var(--line);
+}
+
+.contact-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.contact-filter-head .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.contact-chips {
+  display: flex;
+  padding-bottom: 3px;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.contact-chip {
+  display: inline-flex;
+  min-height: 36px;
+  padding: 4px 12px 4px 5px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  background: #fbf8ef;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.contact-chip:first-child {
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
+.contact-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.contact-chip.is-active {
+  color: var(--paper-card);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.contact-chip > span:last-child {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-chip .avatar {
+  flex: 0 0 auto;
+}
+
+.contact-filter-empty {
+  color: var(--muted-light);
+  font-size: 0.72rem;
+}
+
+.rank-sync-note {
+  padding: 10px 22px 0;
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+}
+
+.dashboard-card > .form-error {
+  margin: 12px 22px 0;
+}
+
 .mizmo-list {
   display: flex;
   padding: 20px;
@@ -1239,6 +1364,10 @@ code {
   background: #fbf8ef;
   border: 1px solid var(--line);
   border-radius: 18px;
+}
+
+.mizmo-card.is-dragging {
+  opacity: 0.45;
 }
 
 .mizmo-card::before {
@@ -1261,6 +1390,52 @@ code {
 
 .mizmo-card-top {
   margin-bottom: 13px;
+}
+
+.mizmo-card-meta,
+.rank-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rank-controls {
+  gap: 2px;
+  padding: 2px;
+  background: var(--paper-deep);
+  border-radius: 999px;
+}
+
+.rank-button,
+.rank-handle {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.rank-button:hover:not(:disabled),
+.rank-handle:hover {
+  color: var(--ink);
+  background: var(--paper-card);
+}
+
+.rank-button:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.rank-handle {
+  cursor: grab;
+}
+
+.rank-handle:active {
+  cursor: grabbing;
 }
 
 .mizmo-card--out .mizmo-direction {
@@ -1294,16 +1469,35 @@ code {
 }
 
 .mizmo-contact {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.66rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 700;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mizmo-contact span {
+.mizmo-contact-text {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.mizmo-contact-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mizmo-contact-label {
   color: var(--muted-light);
   font-family: var(--sans);
   font-size: 0.6rem;
@@ -1312,8 +1506,63 @@ code {
   text-transform: uppercase;
 }
 
+.mizmo-contact .avatar {
+  flex: 0 0 auto;
+}
+
 .mizmo-contact:hover {
   color: var(--accent-deep);
+}
+
+.outbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.outbox-group + .outbox-group {
+  margin-top: 9px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.outbox-group-head a {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.outbox-group-head a > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.outbox-group-head strong {
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 1.12rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outbox-group-head small {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+}
+
+.outbox-group-head a:hover strong {
+  color: var(--accent-deep);
+}
+
+.outbox-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .deadline-pill {
@@ -1456,6 +1705,18 @@ code {
   line-height: 1.62;
 }
 
+.sent-card > .sent-warning {
+  max-width: 480px;
+  margin: -8px auto 26px;
+  padding: 10px 13px;
+  color: var(--danger);
+  background: #fae7e3;
+  border: 1px solid #ecc3bb;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .signed-out-contact {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
@@ -1575,6 +1836,112 @@ code {
   margin-top: 22px;
   padding-top: 21px;
   border-top: 1px solid var(--line);
+}
+
+.profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.profile-editor-copy {
+  min-width: 0;
+}
+
+.profile-editor-copy .microcopy {
+  margin-top: 4px;
+}
+
+.profile-picture-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 13px;
+}
+
+.profile-editor > .button {
+  align-self: flex-start;
+}
+
+.contact-add-form {
+  display: flex;
+  margin-bottom: 18px;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.contact-add-form .field {
+  min-width: 0;
+  flex: 1;
+}
+
+.contact-add-form .icon-button {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+}
+
+.contact-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-manager-row {
+  display: flex;
+  padding: 10px 11px;
+  align-items: center;
+  gap: 12px;
+  background: #fbf8ef;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+
+.contact-manager-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.contact-manager-copy p {
+  overflow: hidden;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-manager-copy span {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 0.61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-remove {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  color: var(--danger);
+}
+
+.contact-manager-empty {
+  padding: 24px 14px;
+  color: var(--muted);
+  background: var(--paper-deep);
+  border-radius: 15px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .settings-heading {
@@ -1782,6 +2149,24 @@ code {
     padding-left: 5px;
   }
 
+  .contact-filter {
+    padding: 14px 15px 15px;
+  }
+
+  .contact-chip > span:last-child {
+    max-width: 108px;
+  }
+
+  .rank-sync-note {
+    padding-right: 15px;
+    padding-left: 15px;
+  }
+
+  .dashboard-card > .form-error {
+    margin-right: 15px;
+    margin-left: 15px;
+  }
+
   .mizmo-card-bottom {
     align-items: flex-start;
     flex-direction: column;
@@ -1869,6 +2254,30 @@ code {
 
   .tab-word {
     grid-row: 1 / span 2;
+  }
+
+  .mizmo-card-top {
+    align-items: flex-start;
+  }
+
+  .mizmo-card-meta {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px;
+  }
+
+  .contact-add-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contact-add-form .icon-button {
+    width: 100%;
+    border-radius: 14px;
+  }
+
+  .profile-editor > .button {
+    width: 100%;
   }
 
   .button {

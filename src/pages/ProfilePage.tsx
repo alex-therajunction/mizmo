@@ -3,11 +3,16 @@ import { Link, useParams } from 'react-router-dom'
 import { nip19 } from 'nostr-tools'
 import { AuthPanel } from '../components/AuthPanel'
 import { Avatar } from '../components/Avatar'
+import { ContactFilter } from '../components/ContactFilter'
+import { ContactManager } from '../components/ContactManager'
 import { Icon } from '../components/Icon'
 import { MizmoCard } from '../components/MizmoCard'
 import { useIdentity } from '../context/useIdentity'
-import { useMizmos } from '../hooks/useMizmos'
+import { useContacts } from '../hooks/useContacts'
+import { useMizmoRankings } from '../hooks/useMizmoRankings'
+import { useMizmos, type MizmoRecord } from '../hooks/useMizmos'
 import { useProfile } from '../hooks/useProfile'
+import { useProfiles } from '../hooks/useProfiles'
 import type { Identity } from '../lib/identity'
 import {
   copyText,
@@ -17,8 +22,15 @@ import {
   toDateTimeLocalValue,
 } from '../lib/format'
 import {
+  adjacentVisibleId,
+  moveIdTo,
+  orderRecords,
+  swapIds,
+} from '../lib/rankings'
+import {
   normalizeNostrId,
   sendMizmo,
+  updateContacts,
   type ProfileData,
 } from '../lib/nostr'
 
@@ -93,7 +105,9 @@ function ProfileHero({
 }) {
   const [copied, setCopied] = useState(false)
   const name = displayName(pubkey, profile?.displayName || profile?.name)
-  const handle = profile?.nip05 || shortenId(pubkey, 16, 10)
+  const handle =
+    profile?.nip05 || shortenId(nip19.npubEncode(pubkey), 18, 12)
+  const hasName = Boolean(profile?.displayName || profile?.name)
   const address = `${window.location.origin}/${nip19.npubEncode(pubkey)}`
 
   const copyAddress = async () => {
@@ -117,9 +131,17 @@ function ProfileHero({
         />
         <div className="profile-copy">
           <p className="eyebrow">
-            {isOwn ? 'Your mizmo address' : 'Send a mizmo to'}
+            {isOwn ? 'Your mi & mo' : 'Send a mizmo to'}
           </p>
-          <h1>{isOwn ? 'Your mi & mo' : loading ? 'Finding…' : name}</h1>
+          <h1>
+            {isOwn
+              ? hasName
+                ? name
+                : 'Your mi & mo'
+              : loading
+                ? 'Finding…'
+                : name}
+          </h1>
           <p className="profile-handle" title={pubkey}>
             {handle}
           </p>
@@ -154,7 +176,10 @@ function SendMizmo({
   const [deadline, setDeadline] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
-  const [sent, setSent] = useState<{ deadline: number | null } | null>(null)
+  const [sent, setSent] = useState<{
+    deadline: number | null
+    contactError: boolean
+  } | null>(null)
   const recipientName = displayName(
     pubkey,
     profile?.displayName || profile?.name,
@@ -189,9 +214,15 @@ function SendMizmo({
         },
         identity.secretKey,
       )
-      setSent({ deadline: deadlineTime })
+      setSent({ deadline: deadlineTime, contactError: false })
       setAsk('')
       setDeadline('')
+
+      updateContacts(identity, pubkey, 'add').catch(() => {
+        setSent((current) =>
+          current ? { ...current, contactError: true } : current,
+        )
+      })
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -217,6 +248,12 @@ function SendMizmo({
             ? ` The deadline is ${formatDeadline(sent.deadline)}.`
             : ' No deadline was set.'}
         </p>
+        {sent.contactError && (
+          <p className="form-error sent-warning">
+            The mizmo was sent, but this person could not be added to your
+            contacts.
+          </p>
+        )}
         <div className="button-row button-row--center">
           <button
             className="button button--primary"
@@ -300,83 +337,356 @@ function SendMizmo({
 
 function OwnDashboard({ identity }: { identity: Identity }) {
   const { inbox, outbox, status } = useMizmos(identity)
+  const {
+    contacts,
+    status: contactsStatus,
+    error: contactsError,
+    addContact,
+    removeContact,
+  } = useContacts(identity)
+  const {
+    rankings,
+    loaded: rankingsLoaded,
+    status: rankingStatus,
+    error: rankingError,
+    setInboxOrder,
+    setOutboxOrder,
+  } = useMizmoRankings(identity)
   const [tab, setTab] = useState<'mi' | 'mo'>('mi')
+  const [selectedContact, setSelectedContact] = useState<string | null>(null)
+  const [contactsOpen, setContactsOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const profilePubkeys = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...contacts,
+          ...inbox.map((record) => record.counterparty),
+          ...outbox.map((record) => record.counterparty),
+        ]),
+      ).sort(),
+    [contacts, inbox, outbox],
+  )
+  const { profiles, loading: profilesLoading } = useProfiles(profilePubkeys)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
 
-  const current = tab === 'mi' ? inbox : outbox
+  const activeContact =
+    selectedContact && contacts.includes(selectedContact)
+      ? selectedContact
+      : null
+
+  const orderedInbox = useMemo(
+    () =>
+      orderRecords(
+        inbox,
+        rankings.inbox,
+        (record) => record.event.id,
+        (record) => record.event.created_at,
+      ),
+    [inbox, rankings.inbox],
+  )
+  const filteredInbox = useMemo(
+    () =>
+      activeContact
+        ? orderedInbox.filter(
+            (record) => record.counterparty === activeContact,
+          )
+        : orderedInbox,
+    [activeContact, orderedInbox],
+  )
+  const outboxGroups = useMemo(() => {
+    const visible = activeContact
+      ? outbox.filter((record) => record.counterparty === activeContact)
+      : outbox
+    const grouped = new Map<string, MizmoRecord[]>()
+
+    for (const record of visible) {
+      const records = grouped.get(record.counterparty) ?? []
+      records.push(record)
+      grouped.set(record.counterparty, records)
+    }
+
+    return Array.from(grouped, ([pubkey, records]) => ({
+      pubkey,
+      records: orderRecords(
+        records,
+        rankings.outbox[pubkey] ?? [],
+        (record) => record.event.id,
+        (record) => record.event.created_at,
+      ),
+    })).sort(
+      (a, b) =>
+        Math.max(...b.records.map((record) => record.event.created_at)) -
+        Math.max(...a.records.map((record) => record.event.created_at)),
+    )
+  }, [activeContact, outbox, rankings])
+  const inboxIds = orderedInbox.map((record) => record.event.id)
+  const visibleInboxIds = filteredInbox.map((record) => record.event.id)
+  const visibleOutboxCount = outboxGroups.reduce(
+    (count, group) => count + group.records.length,
+    0,
+  )
+  const selectedName = activeContact
+    ? displayName(
+        activeContact,
+        profiles[activeContact]?.displayName ||
+          profiles[activeContact]?.name,
+      )
+    : null
+
+  const handleRemoveContact = async (pubkey: string) => {
+    await removeContact(pubkey)
+    if (selectedContact === pubkey) setSelectedContact(null)
+  }
+
+  const moveInbox = (id: string, offset: -1 | 1) => {
+    const neighbor = adjacentVisibleId(visibleInboxIds, id, offset)
+
+    if (neighbor) setInboxOrder(swapIds(inboxIds, id, neighbor))
+  }
+
+  const dropInbox = (sourceId: string, targetId: string) => {
+    if (!inboxIds.includes(sourceId)) return
+    setInboxOrder(moveIdTo(inboxIds, sourceId, targetId))
+  }
+
+  const rankingMessage =
+    rankingStatus === 'loading'
+      ? 'Loading your order…'
+      : rankingStatus === 'saving'
+        ? 'Saving order…'
+        : rankingStatus === 'saved'
+          ? 'Order synced'
+          : ''
 
   return (
-    <section className="dashboard-card">
-      <div className="dashboard-top">
-        <div className="tabs" role="tablist" aria-label="Mizmo boxes">
-          <button
-            aria-selected={tab === 'mi'}
-            className={tab === 'mi' ? 'is-active' : ''}
-            onClick={() => setTab('mi')}
-            role="tab"
-            type="button"
-          >
-            <span className="tab-word">mi</span>
-            <span className="tab-detail">inbox</span>
-            <span className="tab-count">{inbox.length}</span>
-          </button>
-          <button
-            aria-selected={tab === 'mo'}
-            className={tab === 'mo' ? 'is-active' : ''}
-            onClick={() => setTab('mo')}
-            role="tab"
-            type="button"
-          >
-            <span className="tab-word">mo</span>
-            <span className="tab-detail">outbox</span>
-            <span className="tab-count">{outbox.length}</span>
-          </button>
+    <>
+      <section className="dashboard-card">
+        <div className="dashboard-top">
+          <div className="tabs" role="tablist" aria-label="Mizmo boxes">
+            <button
+              aria-selected={tab === 'mi'}
+              className={tab === 'mi' ? 'is-active' : ''}
+              onClick={() => setTab('mi')}
+              role="tab"
+              type="button"
+            >
+              <span className="tab-word">mi</span>
+              <span className="tab-detail">inbox</span>
+              <span className="tab-count">{filteredInbox.length}</span>
+            </button>
+            <button
+              aria-selected={tab === 'mo'}
+              className={tab === 'mo' ? 'is-active' : ''}
+              onClick={() => setTab('mo')}
+              role="tab"
+              type="button"
+            >
+              <span className="tab-word">mo</span>
+              <span className="tab-detail">outbox</span>
+              <span className="tab-count">{visibleOutboxCount}</span>
+            </button>
+          </div>
+          <span className="sync-status">
+            <span
+              className={`status-dot ${
+                status === 'syncing' ? 'is-pulsing' : ''
+              }`}
+            />
+            {status === 'syncing'
+              ? 'Syncing relays…'
+              : status === 'live'
+                ? 'Listening live'
+                : 'Waiting'}
+          </span>
         </div>
-        <span className="sync-status">
-          <span className={`status-dot ${status === 'syncing' ? 'is-pulsing' : ''}`} />
-          {status === 'syncing'
-            ? 'Syncing relays…'
-            : status === 'live'
-              ? 'Listening live'
-              : 'Waiting'}
-        </span>
-      </div>
 
-      <div className="mizmo-list" role="tabpanel">
-        {current.length > 0 ? (
-          current.map((record) => (
-            <MizmoCard key={record.event.id} now={now} record={record} />
-          ))
-        ) : (
-          <EmptyBox tab={tab} syncing={status === 'syncing'} />
+        <ContactFilter
+          contacts={contacts}
+          loading={contactsStatus === 'loading' || profilesLoading}
+          onManage={() => setContactsOpen(true)}
+          onSelect={setSelectedContact}
+          profiles={profiles}
+          selected={activeContact}
+        />
+
+        {rankingMessage && (
+          <p aria-live="polite" className="rank-sync-note">
+            {rankingMessage}
+          </p>
         )}
-      </div>
-    </section>
+        {rankingError && <p className="form-error">{rankingError}</p>}
+        {contactsError && <p className="form-error">{contactsError}</p>}
+
+        <div className="mizmo-list" role="tabpanel">
+          {tab === 'mi' ? (
+            filteredInbox.length > 0 ? (
+              filteredInbox.map((record, index) => (
+                <MizmoCard
+                  key={record.event.id}
+                  now={now}
+                  profile={profiles[record.counterparty]}
+                  record={record}
+                  reorder={
+                    rankingsLoaded
+                      ? {
+                          canMoveUp: index > 0,
+                          canMoveDown: index < filteredInbox.length - 1,
+                          onMoveUp: () => moveInbox(record.event.id, -1),
+                          onMoveDown: () => moveInbox(record.event.id, 1),
+                          onDropOn: dropInbox,
+                        }
+                      : undefined
+                  }
+                />
+              ))
+            ) : (
+              <EmptyBox
+                contactName={selectedName}
+                syncing={status === 'syncing'}
+                tab={tab}
+              />
+            )
+          ) : outboxGroups.length > 0 ? (
+            outboxGroups.map((group) => {
+              const ids = group.records.map((record) => record.event.id)
+              const profile = profiles[group.pubkey]
+              const name = displayName(
+                group.pubkey,
+                profile?.displayName || profile?.name,
+              )
+
+              return (
+                <section className="outbox-group" key={group.pubkey}>
+                  <div className="outbox-group-head">
+                    <Link to={`/${nip19.npubEncode(group.pubkey)}`}>
+                      <Avatar
+                        name={name}
+                        picture={profile?.picture}
+                        pubkey={group.pubkey}
+                        size={38}
+                      />
+                      <span>
+                        <strong>{name}</strong>
+                        <small>
+                          {group.records.length}{' '}
+                          {group.records.length === 1 ? 'ask' : 'asks'}
+                        </small>
+                      </span>
+                    </Link>
+                  </div>
+                  <div className="outbox-group-list">
+                    {group.records.map((record, index) => (
+                      <MizmoCard
+                        key={record.event.id}
+                        now={now}
+                        profile={profile}
+                        record={record}
+                        reorder={
+                          rankingsLoaded
+                            ? {
+                                canMoveUp: index > 0,
+                                canMoveDown: index < ids.length - 1,
+                                onMoveUp: () => {
+                                  const neighbor = adjacentVisibleId(
+                                    ids,
+                                    record.event.id,
+                                    -1,
+                                  )
+                                  if (neighbor) {
+                                    setOutboxOrder(
+                                      group.pubkey,
+                                      swapIds(ids, record.event.id, neighbor),
+                                    )
+                                  }
+                                },
+                                onMoveDown: () => {
+                                  const neighbor = adjacentVisibleId(
+                                    ids,
+                                    record.event.id,
+                                    1,
+                                  )
+                                  if (neighbor) {
+                                    setOutboxOrder(
+                                      group.pubkey,
+                                      swapIds(ids, record.event.id, neighbor),
+                                    )
+                                  }
+                                },
+                                onDropOn: (sourceId, targetId) => {
+                                  if (!ids.includes(sourceId)) return
+                                  setOutboxOrder(
+                                    group.pubkey,
+                                    moveIdTo(ids, sourceId, targetId),
+                                  )
+                                },
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })
+          ) : (
+            <EmptyBox
+              contactName={selectedName}
+              syncing={status === 'syncing'}
+              tab={tab}
+            />
+          )}
+        </div>
+      </section>
+
+      {contactsOpen && (
+        <ContactManager
+          contacts={contacts}
+          identity={identity}
+          loadError={contactsError}
+          onAdd={addContact}
+          onClose={() => setContactsOpen(false)}
+          onRemove={handleRemoveContact}
+          status={contactsStatus}
+        />
+      )}
+    </>
   )
 }
 
 function EmptyBox({
   tab,
   syncing,
+  contactName,
 }: {
   tab: 'mi' | 'mo'
   syncing: boolean
+  contactName: string | null
 }) {
+  const filtered = Boolean(contactName)
+
   return (
     <div className="empty-box">
       <span className="empty-glyph">
         <Icon name={tab === 'mi' ? 'inbox' : 'outbox'} size={30} />
       </span>
-      <h3>{syncing ? 'Checking the relays…' : `Your ${tab} is clear.`}</h3>
+      <h3>
+        {syncing
+          ? 'Checking the relays…'
+          : filtered
+            ? `Nothing for ${contactName} in ${tab}.`
+            : `Your ${tab} is clear.`}
+      </h3>
       <p>
-        {tab === 'mi'
-          ? 'Mizmos sent to your address will appear here.'
-          : 'Mizmos you send to other people will appear here.'}
+        {filtered
+          ? 'Choose All to see the rest of your list.'
+          : tab === 'mi'
+            ? 'Mizmos sent to your address will appear here.'
+            : 'Mizmos you send to other people will appear here.'}
       </p>
     </div>
   )
