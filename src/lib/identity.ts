@@ -1,7 +1,12 @@
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools'
+import {
+  decrypt as decryptNip49,
+  encrypt as encryptNip49,
+} from 'nostr-tools/nip49'
 import { bytesToHex, hexToBytes } from './encoding'
 
 const STORAGE_KEY = 'mizmo.identity.v1'
+export const MIN_BACKUP_PASSWORD_LENGTH = 12
 
 type StoredIdentity = {
   version: 1
@@ -63,6 +68,32 @@ export function importIdentity(value: string): Identity {
     }
 
     throw new Error('That key could not be read. Check it and try again.')
+  }
+}
+
+export function encryptIdentityBackup(
+  identity: Identity,
+  password: string,
+): string {
+  return encryptNip49(identity.secretKey, password)
+}
+
+export function decryptIdentityBackup(
+  value: string,
+  password: string,
+): Identity {
+  const clean = value.replace(/\s+/g, '').toLowerCase()
+
+  if (!nip19.NostrTypeGuard.isNcryptsec(clean)) {
+    throw new Error('Paste a valid NIP-49 encrypted key to continue.')
+  }
+
+  try {
+    return identityFromSecretKey(decryptNip49(clean, password))
+  } catch {
+    throw new Error(
+      'That password did not unlock this backup, or the encrypted key is damaged.',
+    )
   }
 }
 

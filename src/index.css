@@ -779,6 +779,13 @@ code {
   bottom: 12px;
 }
 
+.text-area--mono {
+  min-height: 112px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
 .form-error {
   padding: 10px 13px;
   color: var(--danger);
@@ -1977,6 +1984,59 @@ code {
 .key-reveal .icon-button {
   width: 34px;
   height: 34px;
+}
+
+.email-backup,
+.backup-form,
+.backup-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.import-page {
+  display: flex;
+  padding: clamp(48px, 8vw, 96px) 0;
+  justify-content: center;
+}
+
+.import-card {
+  width: min(100%, 620px);
+  padding: clamp(26px, 4vw, 42px);
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 18px 40px rgba(53, 48, 38, 0.08);
+}
+
+.import-card h1 {
+  margin-top: 14px;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+}
+
+.import-lede {
+  margin-top: 16px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.import-form {
+  display: flex;
+  margin-top: 24px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-key {
+  margin-top: 0;
+}
+
+.import-form .warning-copy {
+  margin-top: 0;
+}
+
+.import-note {
+  margin-top: 18px;
 }
 
 .warning-copy {

@@ -5,6 +5,7 @@ export type IdentityContextValue = {
   identity: Identity | null
   createIdentity: () => Identity
   importIdentity: (value: string) => Identity
+  importEncryptedIdentity: (value: string, password: string) => Identity
   signOut: () => void
 }
 

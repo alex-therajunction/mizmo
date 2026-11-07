@@ -6,6 +6,7 @@ import {
 } from 'react'
 import {
   createIdentity as makeIdentity,
+  decryptIdentityBackup,
   forgetIdentity,
   importIdentity as readIdentity,
   loadIdentity,
@@ -31,14 +32,36 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     return next
   }, [])
 
+  const importEncryptedIdentity = useCallback(
+    (value: string, password: string) => {
+      const next = decryptIdentityBackup(value, password)
+      persistIdentity(next)
+      setIdentity(next)
+      return next
+    },
+    [],
+  )
+
   const signOut = useCallback(() => {
     forgetIdentity()
     setIdentity(null)
   }, [])
 
   const value = useMemo(
-    () => ({ identity, createIdentity, importIdentity, signOut }),
-    [createIdentity, identity, importIdentity, signOut],
+    () => ({
+      identity,
+      createIdentity,
+      importIdentity,
+      importEncryptedIdentity,
+      signOut,
+    }),
+    [
+      createIdentity,
+      identity,
+      importEncryptedIdentity,
+      importIdentity,
+      signOut,
+    ],
   )
 
   return (

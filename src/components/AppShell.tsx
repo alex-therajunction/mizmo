@@ -5,6 +5,7 @@ import { useProfiles } from '../hooks/useProfiles'
 import { copyText, displayName } from '../lib/format'
 import { RELAYS } from '../lib/nostr'
 import { Avatar } from './Avatar'
+import { EmailBackup } from './EmailBackup'
 import { Icon } from './Icon'
 import { Modal } from './Modal'
 import { ProfileEditor } from './ProfileEditor'
@@ -225,6 +226,10 @@ function SettingsModal({
           Clearing browser data or signing out without a backup will lose this
           identity.
         </p>
+      </div>
+
+      <div className="settings-section">
+        <EmailBackup identity={identity} />
       </div>
 
       <div className="settings-section">
