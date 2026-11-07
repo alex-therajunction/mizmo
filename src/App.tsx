@@ -5,6 +5,7 @@ import { AuthPanel } from './components/AuthPanel'
 import { Modal } from './components/Modal'
 import { HomePage } from './pages/HomePage'
 import { ImportPage } from './pages/ImportPage'
+import { JoinPage } from './pages/JoinPage'
 import { ProfilePage } from './pages/ProfilePage'
 
 function ScrollToTop() {
@@ -27,6 +28,7 @@ function App() {
         <Routes>
           <Route element={<HomePage />} path="/" />
           <Route element={<ImportPage />} path="/import" />
+          <Route element={<JoinPage />} path="/join" />
           <Route
             element={<ProfilePage onOpenAuth={() => setAuthOpen(true)} />}
             path="/:id"

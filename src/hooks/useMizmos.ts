@@ -14,12 +14,14 @@ import {
 export type MizmoDirection = 'in' | 'out'
 
 export type MizmoRecord = {
-  event: Event
+  id: string
+  createdAt: number
   direction: MizmoDirection
   counterparty: string
   ask: string | null
   deadline: number | null
   decryptionError: boolean
+  source: 'nostr' | 'email'
 }
 
 export type RelayStatus = 'idle' | 'syncing' | 'live'
@@ -42,21 +44,25 @@ function toRecord(event: Event, identity: Identity): MizmoRecord | null {
     const payload = decryptMizmo(event, identity.secretKey, identity.pubkey)
 
     return {
-      event,
+      id: event.id,
+      createdAt: event.created_at,
       direction,
       counterparty,
       ask: payload.ask,
       deadline: deadlineFromEvent(event),
       decryptionError: false,
+      source: 'nostr',
     }
   } catch {
     return {
-      event,
+      id: event.id,
+      createdAt: event.created_at,
       direction,
       counterparty,
       ask: null,
       deadline: deadlineFromEvent(event),
       decryptionError: true,
+      source: 'nostr',
     }
   }
 }
@@ -142,7 +148,7 @@ export function useMizmos(identity: Identity | null) {
     return current.events
       .map((event) => toRecord(event, identity))
       .filter((record): record is MizmoRecord => record !== null)
-      .sort((a, b) => b.event.created_at - a.event.created_at)
+      .sort((a, b) => b.createdAt - a.createdAt)
   }, [current.events, identity])
 
   const inbox = useMemo(

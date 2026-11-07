@@ -39,7 +39,7 @@ export function MizmoCard({
 
   const handleDragStart = (event: DragEvent<HTMLElement>) => {
     event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', record.event.id)
+    event.dataTransfer.setData('text/plain', record.id)
     setDragging(true)
   }
 
@@ -49,8 +49,8 @@ export function MizmoCard({
     event.preventDefault()
     const sourceId = event.dataTransfer.getData('text/plain')
 
-    if (sourceId && sourceId !== record.event.id) {
-      reorder.onDropOn(sourceId, record.event.id)
+    if (sourceId && sourceId !== record.id) {
+      reorder.onDropOn(sourceId, record.id)
     }
   }
 
@@ -68,10 +68,15 @@ export function MizmoCard({
         <span className="mizmo-direction">
           <Icon name={record.direction === 'in' ? 'inbox' : 'outbox'} size={16} />
           {record.direction === 'in' ? 'mi' : 'mo'}
+          {record.source === 'email' && (
+            <span className="mizmo-source">
+              <Icon name="mail" size={12} /> email
+            </span>
+          )}
         </span>
         <div className="mizmo-card-meta">
           <span className="mizmo-date">
-            {formatEventTime(record.event.created_at * 1000)}
+            {formatEventTime(record.createdAt * 1000)}
           </span>
           {reorder && (
             <span className="rank-controls">

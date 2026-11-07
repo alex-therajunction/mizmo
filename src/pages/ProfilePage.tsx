@@ -5,19 +5,26 @@ import { AuthPanel } from '../components/AuthPanel'
 import { Avatar } from '../components/Avatar'
 import { ContactFilter } from '../components/ContactFilter'
 import { ContactManager } from '../components/ContactManager'
+import { EmailInviteModal } from '../components/EmailInviteModal'
 import { Icon } from '../components/Icon'
 import { MizmoCard } from '../components/MizmoCard'
 import { useIdentity } from '../context/useIdentity'
 import { useContacts } from '../hooks/useContacts'
+import {
+  useReceivedEmailInvites,
+  useSentEmailInvites,
+} from '../hooks/useEmailInvites'
 import { useMizmoRankings } from '../hooks/useMizmoRankings'
 import { useMizmos, type MizmoRecord } from '../hooks/useMizmos'
 import { useProfile } from '../hooks/useProfile'
 import { useProfiles } from '../hooks/useProfiles'
+import type { SentEmailInvite } from '../lib/emailInvites'
 import type { Identity } from '../lib/identity'
 import {
   copyText,
   displayName,
   formatDeadline,
+  formatEventTime,
   shortenId,
   toDateTimeLocalValue,
 } from '../lib/format'
@@ -176,13 +183,20 @@ function SendMizmo({
   const [deadline, setDeadline] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [emailOpen, setEmailOpen] = useState(false)
   const [sent, setSent] = useState<{
     deadline: number | null
     contactError: boolean
   } | null>(null)
+  const { profiles: ownProfiles } = useProfiles([identity.pubkey])
   const recipientName = displayName(
     pubkey,
     profile?.displayName || profile?.name,
+  )
+  const ownProfile = ownProfiles[identity.pubkey]
+  const inviterName = displayName(
+    identity.pubkey,
+    ownProfile?.displayName || ownProfile?.name,
   )
   const [minimumDeadline] = useState(() => toDateTimeLocalValue(new Date()))
 
@@ -272,7 +286,8 @@ function SendMizmo({
   }
 
   return (
-    <section className="compose-card">
+    <>
+      <section className="compose-card">
       <div className="compose-heading">
         <div>
           <p className="eyebrow">Write a mizmo</p>
@@ -327,16 +342,52 @@ function SendMizmo({
         </button>
       </form>
 
-      <p className="compose-note">
-        Your ask is NIP-44 encrypted. The recipient and deadline tags remain
-        public relay metadata.
-      </p>
-    </section>
+        <p className="compose-note">
+          Your ask is NIP-44 encrypted. The recipient and deadline tags remain
+          public relay metadata.
+        </p>
+
+        <div className="compose-email-action">
+          <div>
+            <strong>Not on miZmo yet?</strong>
+            <span>Send this ask as an email invitation instead.</span>
+          </div>
+          <button
+            className="button button--secondary button--small"
+            onClick={() => setEmailOpen(true)}
+            type="button"
+          >
+            <Icon name="mail" size={16} />
+            Invite by email
+          </button>
+        </div>
+      </section>
+
+      {emailOpen && (
+        <EmailInviteModal
+          identity={identity}
+          initialAsk={ask}
+          initialDeadline={deadline}
+          inviterName={inviterName}
+          onClose={() => setEmailOpen(false)}
+        />
+      )}
+    </>
   )
 }
 
 function OwnDashboard({ identity }: { identity: Identity }) {
-  const { inbox, outbox, status } = useMizmos(identity)
+  const { inbox: nostrInbox, outbox, status } = useMizmos(identity)
+  const {
+    invites: receivedEmailInvites,
+    status: receivedEmailStatus,
+    error: receivedEmailError,
+  } = useReceivedEmailInvites(identity)
+  const {
+    invites: sentEmailInvites,
+    status: sentEmailStatus,
+    error: sentEmailError,
+  } = useSentEmailInvites(identity)
   const {
     contacts,
     status: contactsStatus,
@@ -356,6 +407,24 @@ function OwnDashboard({ identity }: { identity: Identity }) {
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
   const [contactsOpen, setContactsOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const inbox = useMemo(() => {
+    const emailRecords = receivedEmailInvites.map(
+      (invite): MizmoRecord => ({
+        id: invite.eventId,
+        createdAt: Math.floor(invite.createdAt / 1000),
+        direction: 'in',
+        counterparty: invite.inviter,
+        ask: invite.ask,
+        deadline: invite.deadline,
+        decryptionError: false,
+        source: 'email',
+      }),
+    )
+
+    return [...nostrInbox, ...emailRecords].sort(
+      (a, b) => b.createdAt - a.createdAt,
+    )
+  }, [nostrInbox, receivedEmailInvites])
   const profilePubkeys = useMemo(
     () =>
       Array.from(
@@ -363,9 +432,12 @@ function OwnDashboard({ identity }: { identity: Identity }) {
           ...contacts,
           ...inbox.map((record) => record.counterparty),
           ...outbox.map((record) => record.counterparty),
+          ...sentEmailInvites
+            .map((invite) => invite.recipient)
+            .filter((pubkey): pubkey is string => Boolean(pubkey)),
         ]),
       ).sort(),
-    [contacts, inbox, outbox],
+    [contacts, inbox, outbox, sentEmailInvites],
   )
   const { profiles, loading: profilesLoading } = useProfiles(profilePubkeys)
 
@@ -384,8 +456,8 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       orderRecords(
         inbox,
         rankings.inbox,
-        (record) => record.event.id,
-        (record) => record.event.created_at,
+        (record) => record.id,
+        (record) => record.createdAt,
       ),
     [inbox, rankings.inbox],
   )
@@ -415,21 +487,23 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       records: orderRecords(
         records,
         rankings.outbox[pubkey] ?? [],
-        (record) => record.event.id,
-        (record) => record.event.created_at,
+        (record) => record.id,
+        (record) => record.createdAt,
       ),
     })).sort(
       (a, b) =>
-        Math.max(...b.records.map((record) => record.event.created_at)) -
-        Math.max(...a.records.map((record) => record.event.created_at)),
+        Math.max(...b.records.map((record) => record.createdAt)) -
+        Math.max(...a.records.map((record) => record.createdAt)),
     )
   }, [activeContact, outbox, rankings])
-  const inboxIds = orderedInbox.map((record) => record.event.id)
-  const visibleInboxIds = filteredInbox.map((record) => record.event.id)
-  const visibleOutboxCount = outboxGroups.reduce(
-    (count, group) => count + group.records.length,
-    0,
-  )
+  const inboxIds = orderedInbox.map((record) => record.id)
+  const visibleInboxIds = filteredInbox.map((record) => record.id)
+  const visibleEmailInviteCount = activeContact ? 0 : sentEmailInvites.length
+  const visibleOutboxCount =
+    outboxGroups.reduce(
+      (count, group) => count + group.records.length,
+      0,
+    ) + visibleEmailInviteCount
   const selectedName = activeContact
     ? displayName(
         activeContact,
@@ -521,13 +595,19 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         )}
         {rankingError && <p className="form-error">{rankingError}</p>}
         {contactsError && <p className="form-error">{contactsError}</p>}
+        {receivedEmailError && (
+          <p className="form-error">{receivedEmailError}</p>
+        )}
+        {tab === 'mo' && sentEmailError && (
+          <p className="form-error">{sentEmailError}</p>
+        )}
 
         <div className="mizmo-list" role="tabpanel">
           {tab === 'mi' ? (
             filteredInbox.length > 0 ? (
               filteredInbox.map((record, index) => (
                 <MizmoCard
-                  key={record.event.id}
+                  key={record.id}
                   now={now}
                   profile={profiles[record.counterparty]}
                   record={record}
@@ -536,8 +616,8 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                       ? {
                           canMoveUp: index > 0,
                           canMoveDown: index < filteredInbox.length - 1,
-                          onMoveUp: () => moveInbox(record.event.id, -1),
-                          onMoveDown: () => moveInbox(record.event.id, 1),
+                          onMoveUp: () => moveInbox(record.id, -1),
+                          onMoveDown: () => moveInbox(record.id, 1),
                           onDropOn: dropInbox,
                         }
                       : undefined
@@ -547,13 +627,23 @@ function OwnDashboard({ identity }: { identity: Identity }) {
             ) : (
               <EmptyBox
                 contactName={selectedName}
-                syncing={status === 'syncing'}
+                syncing={
+                  status === 'syncing' || receivedEmailStatus === 'loading'
+                }
                 tab={tab}
               />
             )
-          ) : outboxGroups.length > 0 ? (
-            outboxGroups.map((group) => {
-              const ids = group.records.map((record) => record.event.id)
+          ) : outboxGroups.length > 0 || visibleEmailInviteCount > 0 ? (
+            <>
+              {!activeContact && sentEmailInvites.length > 0 && (
+                <EmailInvitesOutbox
+                  invites={sentEmailInvites}
+                  now={now}
+                  profiles={profiles}
+                />
+              )}
+              {outboxGroups.map((group) => {
+              const ids = group.records.map((record) => record.id)
               const profile = profiles[group.pubkey]
               const name = displayName(
                 group.pubkey,
@@ -582,7 +672,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                   <div className="outbox-group-list">
                     {group.records.map((record, index) => (
                       <MizmoCard
-                        key={record.event.id}
+                        key={record.id}
                         now={now}
                         profile={profile}
                         record={record}
@@ -594,26 +684,26 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                                 onMoveUp: () => {
                                   const neighbor = adjacentVisibleId(
                                     ids,
-                                    record.event.id,
+                                    record.id,
                                     -1,
                                   )
                                   if (neighbor) {
                                     setOutboxOrder(
                                       group.pubkey,
-                                      swapIds(ids, record.event.id, neighbor),
+                                      swapIds(ids, record.id, neighbor),
                                     )
                                   }
                                 },
                                 onMoveDown: () => {
                                   const neighbor = adjacentVisibleId(
                                     ids,
-                                    record.event.id,
+                                    record.id,
                                     1,
                                   )
                                   if (neighbor) {
                                     setOutboxOrder(
                                       group.pubkey,
-                                      swapIds(ids, record.event.id, neighbor),
+                                      swapIds(ids, record.id, neighbor),
                                     )
                                   }
                                 },
@@ -632,11 +722,16 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                   </div>
                 </section>
               )
-            })
+              })}
+            </>
           ) : (
             <EmptyBox
               contactName={selectedName}
-              syncing={status === 'syncing'}
+              syncing={
+                status === 'syncing' ||
+                receivedEmailStatus === 'loading' ||
+                sentEmailStatus === 'loading'
+              }
               tab={tab}
             />
           )}
@@ -655,6 +750,140 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         />
       )}
     </>
+  )
+}
+
+function EmailInvitesOutbox({
+  invites,
+  now,
+  profiles,
+}: {
+  invites: SentEmailInvite[]
+  now: number
+  profiles: Record<string, ProfileData | null>
+}) {
+  const pending = invites.filter((invite) => invite.status === 'pending').length
+
+  return (
+    <section className="outbox-group email-outbox-group">
+      <div className="outbox-group-head email-outbox-head">
+        <span className="email-outbox-heading">
+          <span className="email-outbox-icon">
+            <Icon name="mail" size={18} />
+          </span>
+          <span>
+            <strong>Email invitations</strong>
+            <small>
+              {invites.length} {invites.length === 1 ? 'invite' : 'invites'}
+              {pending > 0 ? ` · ${pending} awaiting sign-up` : ' · all accepted'}
+            </small>
+          </span>
+        </span>
+      </div>
+      <div className="outbox-group-list">
+        {invites.map((invite) => (
+          <EmailInviteCard
+            invite={invite}
+            key={invite.id}
+            now={now}
+            profiles={profiles}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function EmailInviteCard({
+  invite,
+  now,
+  profiles,
+}: {
+  invite: SentEmailInvite
+  now: number
+  profiles: Record<string, ProfileData | null>
+}) {
+  const accepted = invite.status === 'accepted' && invite.recipient !== null
+  const recipientProfile = invite.recipient
+    ? profiles[invite.recipient]
+    : null
+  const recipientName = invite.recipient
+    ? displayName(
+        invite.recipient,
+        recipientProfile?.displayName || recipientProfile?.name,
+      )
+    : invite.email || 'Invitation link'
+  const overdue = invite.deadline !== null && invite.deadline < now
+
+  return (
+    <article
+      className={`mizmo-card mizmo-card--out mizmo-card--email-invite ${
+        overdue ? 'is-overdue' : ''
+      }`}
+    >
+      <div className="mizmo-card-top">
+        <span className="mizmo-direction">
+          <Icon name="outbox" size={16} /> mo
+          <span className="mizmo-source">
+            <Icon name="mail" size={12} /> email
+          </span>
+        </span>
+        <div className="mizmo-card-meta">
+          <span className="mizmo-date">
+            {formatEventTime(invite.createdAt)}
+          </span>
+          <span
+            className={`email-invite-status ${
+              accepted ? 'is-accepted' : 'is-pending'
+            }`}
+          >
+            {accepted ? 'accepted' : 'awaiting sign-up'}
+          </span>
+        </div>
+      </div>
+
+      <p className="mizmo-ask">{invite.ask}</p>
+
+      <div className="mizmo-card-bottom">
+        {accepted && invite.recipient ? (
+          <Link
+            className="mizmo-contact"
+            title={invite.recipient}
+            to={`/${nip19.npubEncode(invite.recipient)}`}
+          >
+            <Avatar
+              name={recipientName}
+              picture={recipientProfile?.picture}
+              pubkey={invite.recipient}
+              size={22}
+            />
+            <span className="mizmo-contact-text">
+              <span className="mizmo-contact-label">Accepted by</span>
+              <span className="mizmo-contact-name">{recipientName}</span>
+            </span>
+          </Link>
+        ) : (
+          <span className="mizmo-contact email-invite-recipient">
+            <span className="email-outbox-icon email-outbox-icon--small">
+              <Icon name="mail" size={13} />
+            </span>
+            <span className="mizmo-contact-text">
+              <span className="mizmo-contact-label">To</span>
+              <span className="mizmo-contact-name">{recipientName}</span>
+            </span>
+          </span>
+        )}
+        {invite.deadline !== null ? (
+          <span className={`deadline-pill ${overdue ? 'is-overdue' : ''}`}>
+            <Icon name="clock" size={14} />
+            {overdue ? 'Overdue · ' : ''}
+            {formatDeadline(invite.deadline)}
+          </span>
+        ) : (
+          <span className="deadline-pill deadline-pill--quiet">No deadline</span>
+        )}
+      </div>
+    </article>
   )
 }
 

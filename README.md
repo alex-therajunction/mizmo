@@ -13,6 +13,9 @@ ask, with an optional deadline.
 - Keys are generated or imported in the browser and stored in `localStorage`.
   Settings can also create an encrypted NIP-49 backup and open a pre-filled
   email draft for saving it.
+- A mizmo can be sent by email to someone without a key yet. The email opens
+  the default mail client with a signup link; accepting it adds the inviter as
+  a contact and delivers the encrypted ask.
 - There is no application server. The browser connects directly to Nostr relays.
 
 ## Stack
@@ -79,6 +82,22 @@ Mizmo asks and private ranking data are encrypted. Some relays may reject large
 profile events; avatars are therefore resized before publishing.
 
 Default relays are configured in `src/lib/nostr.ts`.
+
+## Email invitations
+
+The compose page for a Nostr contact also offers **Invite by email** for a new
+person. The browser creates a one-time Nostr key, publishes a signed kind
+`30078` invitation encrypted to that key, and opens a `mailto:` draft. The
+email link carries the invite event ID and one-time secret in the URL fragment,
+so neither the ask nor the secret is sent to the static host. The recipient's
+email address is stored only in the inviter's self-encrypted app data.
+
+Opening `/join#invite=…&key=…` creates or imports a key, verifies and decrypts
+the invitation, adds the inviter through NIP-02, stores the mizmo in
+self-encrypted received-invite data, and publishes a recipient-signed claim.
+The claim moves the invitation from **awaiting sign-up** to **accepted** in the
+sender's `mo` view. Invitation links are capability links: they do not expire,
+and anyone who receives a forwarded link can import the mizmo.
 
 ## Static hosting
 

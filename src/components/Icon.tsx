@@ -13,6 +13,7 @@ export type IconName =
   | 'key'
   | 'link'
   | 'logout'
+  | 'mail'
   | 'outbox'
   | 'plus'
   | 'send'
@@ -71,6 +72,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="M10 5H5v14h5" />
       <path d="M14 8l4 4-4 4m4-4H9" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
     </>
   ),
   outbox: (

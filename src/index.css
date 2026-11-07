@@ -2076,6 +2076,293 @@ code {
   line-height: 1.55;
 }
 
+.mizmo-source {
+  display: inline-flex;
+  margin-left: 3px;
+  padding: 3px 6px;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  background: var(--paper-deep);
+  border-radius: 999px;
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+}
+
+.compose-email-action {
+  display: flex;
+  margin-top: 18px;
+  padding-top: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.compose-email-action > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.compose-email-action strong {
+  font-family: var(--display);
+  font-size: 1.03rem;
+  font-weight: 600;
+}
+
+.compose-email-action span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.email-invite-form {
+  margin-top: 4px;
+}
+
+.email-invite-note {
+  margin-top: 0;
+}
+
+.email-invite-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.email-invite-result > p:not(.form-error):not(.microcopy) {
+  max-width: 470px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.62;
+}
+
+.email-invite-result-icon {
+  width: 62px;
+  height: 62px;
+  margin-bottom: 7px;
+  background: var(--blue);
+  box-shadow: 0 0 0 8px var(--blue-pale);
+}
+
+.email-invite-result .form-error {
+  width: 100%;
+}
+
+.email-outbox-group {
+  padding: 16px;
+  background: rgba(240, 199, 95, 0.11);
+  border: 1px dashed var(--line-strong);
+  border-radius: 18px;
+}
+
+.email-outbox-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.email-outbox-heading > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.email-outbox-heading strong {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.email-outbox-heading small {
+  color: var(--muted-light);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+}
+
+.email-outbox-icon {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  color: var(--accent-deep);
+  background: var(--sun-pale);
+  border: 1px solid rgba(185, 174, 155, 0.7);
+  border-radius: 50%;
+  place-items: center;
+}
+
+.email-outbox-icon--small {
+  width: 22px;
+  height: 22px;
+  border: 0;
+}
+
+.mizmo-card--email-invite::before {
+  background: var(--sun);
+}
+
+.email-invite-status {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.email-invite-status.is-pending {
+  color: #75590f;
+  background: var(--sun-pale);
+}
+
+.email-invite-status.is-accepted {
+  color: var(--green);
+  background: var(--green-pale);
+}
+
+.email-invite-recipient {
+  cursor: default;
+}
+
+.join-page {
+  display: flex;
+  padding: clamp(42px, 7vw, 82px) 0;
+  justify-content: center;
+}
+
+.join-card {
+  display: flex;
+  width: min(100%, 680px);
+  padding: clamp(27px, 5vw, 46px);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 18px 44px rgba(53, 48, 38, 0.08);
+}
+
+.join-card h1 {
+  font-size: clamp(2.45rem, 6vw, 4.3rem);
+}
+
+.join-lede {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.68;
+}
+
+.join-sender {
+  display: flex;
+  width: 100%;
+  padding: 14px 16px;
+  align-items: center;
+  gap: 12px;
+  background: #fbf8ef;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+.join-sender > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.join-sender strong {
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 1.12rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.join-private-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+}
+
+.join-auth {
+  width: 100%;
+}
+
+.join-accepting {
+  display: flex;
+  width: 100%;
+  padding: 18px;
+  align-items: center;
+  gap: 10px;
+  color: var(--green);
+  background: var(--green-pale);
+  border-radius: 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.join-accepting .status-dot {
+  color: var(--green);
+  background: var(--green);
+}
+
+.join-error {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.join-card--result {
+  align-items: center;
+  text-align: center;
+}
+
+.join-card--result .join-lede {
+  max-width: 500px;
+}
+
+.join-card--result > .form-error {
+  width: 100%;
+}
+
+.join-mizmo-preview {
+  display: flex;
+  width: 100%;
+  padding: 21px 23px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+  background: #fbf8ef;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  text-align: left;
+}
+
+.join-mizmo-preview p {
+  font-family: var(--display);
+  font-size: clamp(1.2rem, 2.3vw, 1.5rem);
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.join-note {
+  width: 100%;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -2240,6 +2527,25 @@ code {
   .compose-heading {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .compose-email-action {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .join-card {
+    padding: 25px 22px;
+    border-radius: 24px;
+  }
+
+  .join-sender {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .join-sender .deadline-pill {
+    margin-left: 60px;
   }
 
   .modal-backdrop {
