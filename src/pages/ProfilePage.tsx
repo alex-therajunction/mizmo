@@ -383,6 +383,23 @@ function SendMizmo({
   )
 }
 
+function sentEmailInviteToOutboxRecord(
+  invite: SentEmailInvite,
+): MizmoRecord | null {
+  if (invite.status !== 'accepted' || !invite.recipient) return null
+
+  return {
+    id: invite.eventId,
+    createdAt: Math.floor(invite.createdAt / 1000),
+    direction: 'out',
+    counterparty: invite.recipient,
+    ask: invite.ask,
+    deadline: invite.deadline,
+    decryptionError: false,
+    source: 'email',
+  }
+}
+
 function OwnDashboard({ identity }: { identity: Identity }) {
   const { inbox: nostrInbox, outbox, status } = useMizmos(identity)
   const {
@@ -443,6 +460,17 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       (a, b) => b.createdAt - a.createdAt,
     )
   }, [nostrInbox, receivedEmailInvites])
+  const acceptedEmailOutbox = useMemo(
+    () =>
+      sentEmailInvites
+        .map(sentEmailInviteToOutboxRecord)
+        .filter((record): record is MizmoRecord => record !== null),
+    [sentEmailInvites],
+  )
+  const outboxRecords = useMemo(
+    () => [...outbox, ...acceptedEmailOutbox],
+    [acceptedEmailOutbox, outbox],
+  )
   const profilePubkeys = useMemo(
     () =>
       Array.from(
@@ -450,13 +478,13 @@ function OwnDashboard({ identity }: { identity: Identity }) {
           identity.pubkey,
           ...contacts,
           ...inbox.map((record) => record.counterparty),
-          ...outbox.map((record) => record.counterparty),
+          ...outboxRecords.map((record) => record.counterparty),
           ...sentEmailInvites
             .map((invite) => invite.recipient)
             .filter((pubkey): pubkey is string => Boolean(pubkey)),
         ]),
       ).sort(),
-    [contacts, identity.pubkey, inbox, outbox, sentEmailInvites],
+    [contacts, identity.pubkey, inbox, outboxRecords, sentEmailInvites],
   )
   const { profiles, loading: profilesLoading } = useProfiles(profilePubkeys)
   const ownProfile = profiles[identity.pubkey]
@@ -534,7 +562,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     [activeContact, archivedIds, deletedIds, orderedInbox],
   )
   const outboxGroups = useMemo(() => {
-    const visible = outbox.filter(
+    const visible = outboxRecords.filter(
       (record) =>
         !archivedIds.has(record.id) &&
         !deletedIds.has(record.id) &&
@@ -561,11 +589,12 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         Math.max(...b.records.map((record) => record.createdAt)) -
         Math.max(...a.records.map((record) => record.createdAt)),
     )
-  }, [activeContact, archivedIds, deletedIds, outbox, rankings])
+  }, [activeContact, archivedIds, deletedIds, outboxRecords, rankings])
   const visibleSentEmailInvites = useMemo(
     () =>
       sentEmailInvites.filter(
         (invite) =>
+          invite.status === 'pending' &&
           !archivedIds.has(invite.eventId) &&
           !deletedIds.has(invite.eventId),
       ),
@@ -575,6 +604,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     () =>
       sentEmailInvites.filter(
         (invite) =>
+          invite.status === 'pending' &&
           archivedIds.has(invite.eventId) &&
           !deletedIds.has(invite.eventId),
       ),
@@ -583,7 +613,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
   const archivedMizmos = useMemo(
     () =>
       orderRecords(
-        [...inbox, ...outbox].filter(
+        [...inbox, ...outboxRecords].filter(
           (record) =>
             archivedIds.has(record.id) && !deletedIds.has(record.id),
         ),
@@ -591,7 +621,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         (record) => record.id,
         (record) => record.createdAt,
       ),
-    [archivedIds, deletedIds, inbox, outbox, rankings.archived],
+    [archivedIds, deletedIds, inbox, outboxRecords, rankings.archived],
   )
   const archivedCount =
     archivedMizmos.length + archivedSentEmailInvites.length
