@@ -16,14 +16,13 @@ export function buildBackupImportUrl(ncryptsec: string): string {
 
 export function buildBackupEmailUrl(
   ncryptsec: string,
-  npub: string,
 ): string {
   const importUrl = buildBackupImportUrl(ncryptsec)
   const subject = 'Your miZmo login link'
   const body = [
     'Your miZmo login link',
     '',
-    'Open this link to sign in and import your key:',
+    'Open this link to sign in on another device:',
     importUrl,
     '',
     'You will need the password you chose when creating this link.',
@@ -31,12 +30,10 @@ export function buildBackupEmailUrl(
     '',
     'If the link does not work, open:',
     buildImportPageUrl(),
-    'and paste the encrypted key below.',
+    'and paste the backup code below.',
     '',
-    'Encrypted key (for manual import):',
+    'Backup code:',
     ncryptsec,
-    '',
-    `miZmo address: ${npub}`,
     '',
     'Anyone with this link and password can act as you. If you did not create this login link, delete this email.',
   ].join('\n')

@@ -8,8 +8,10 @@ import { ContactManager } from '../components/ContactManager'
 import { EmailInviteModal } from '../components/EmailInviteModal'
 import { Icon } from '../components/Icon'
 import { MizmoCard } from '../components/MizmoCard'
+import { MoComposer } from '../components/MoComposer'
 import { useIdentity } from '../context/useIdentity'
 import { useContacts } from '../hooks/useContacts'
+import { useEmailContacts } from '../hooks/useEmailContacts'
 import {
   useReceivedEmailInvites,
   useSentEmailInvites,
@@ -25,7 +27,6 @@ import {
   displayName,
   formatDeadline,
   formatEventTime,
-  shortenId,
   toDateTimeLocalValue,
 } from '../lib/format'
 import {
@@ -76,10 +77,10 @@ export function ProfilePage({ onOpenAuth }: ProfilePageProps) {
         <section className="signed-out-contact">
           <div className="auth-callout-copy">
             <p className="eyebrow">Your move</p>
-            <h2>Sign in to send a mizmo.</h2>
+            <h2>Sign in to send an ask.</h2>
             <p>
-              You need a Nostr key to sign and encrypt the ask. Create one here
-              or bring an existing key — either way it stays in this browser.
+              Create your account or use your recovery code. Then write what
+              you need and send it.
             </p>
             <button
               className="text-button"
@@ -113,7 +114,7 @@ function ProfileHero({
   const [copied, setCopied] = useState(false)
   const name = displayName(pubkey, profile?.displayName || profile?.name)
   const handle =
-    profile?.nip05 || shortenId(nip19.npubEncode(pubkey), 18, 12)
+    profile?.nip05 || (isOwn ? 'Your personal miZmo page' : 'miZmo member')
   const hasName = Boolean(profile?.displayName || profile?.name)
   const address = `${window.location.origin}/${nip19.npubEncode(pubkey)}`
 
@@ -138,7 +139,7 @@ function ProfileHero({
         />
         <div className="profile-copy">
           <p className="eyebrow">
-            {isOwn ? 'Your mi & mo' : 'Send a mizmo to'}
+            {isOwn ? 'Your mi & mo' : 'Send an ask to'}
           </p>
           <h1>
             {isOwn
@@ -149,7 +150,7 @@ function ProfileHero({
                 ? 'Finding…'
                 : name}
           </h1>
-          <p className="profile-handle" title={pubkey}>
+          <p className="profile-handle">
             {handle}
           </p>
           {profile?.about && !isOwn && (
@@ -164,7 +165,7 @@ function ProfileHero({
         type="button"
       >
         <Icon name={copied ? 'check' : 'copy'} size={16} />
-        {copied ? 'Address copied' : isOwn ? 'Copy my address' : 'Copy address'}
+        {copied ? 'Link copied' : isOwn ? 'Copy my link' : 'Copy link'}
       </button>
     </section>
   )
@@ -241,7 +242,7 @@ function SendMizmo({
       setError(
         caught instanceof Error
           ? caught.message
-          : 'The mizmo could not be sent. Try again.',
+          : 'Your ask could not be sent. Try again.',
       )
     } finally {
       setSending(false)
@@ -254,17 +255,17 @@ function SendMizmo({
         <span className="sent-icon">
           <Icon name="check" size={28} />
         </span>
-        <p className="eyebrow">Mizmo sent</p>
-        <h2>It&apos;s in {recipientName}&apos;s mi.</h2>
+        <p className="eyebrow">Ask sent</p>
+        <h2>It&apos;s waiting in {recipientName}&apos;s inbox.</h2>
         <p>
-          The ask was encrypted and published to your Nostr relays.
+          Your ask was sent privately.
           {sent.deadline
             ? ` The deadline is ${formatDeadline(sent.deadline)}.`
             : ' No deadline was set.'}
         </p>
         {sent.contactError && (
           <p className="form-error sent-warning">
-            The mizmo was sent, but this person could not be added to your
+            Your ask was sent, but this person could not be added to your
             contacts.
           </p>
         )}
@@ -278,7 +279,7 @@ function SendMizmo({
             <Icon name="arrow-right" />
           </button>
           <Link className="button button--ghost" to={`/${identity.npub}`}>
-            Go to my mi
+            Go to my inbox
           </Link>
         </div>
       </section>
@@ -290,18 +291,18 @@ function SendMizmo({
       <section className="compose-card">
       <div className="compose-heading">
         <div>
-          <p className="eyebrow">Write a mizmo</p>
+          <p className="eyebrow">Write your ask</p>
           <h2>What do you need?</h2>
         </div>
         <span className="encrypted-badge">
-          <Icon name="key" size={14} /> encrypted
+          <Icon name="lock" size={14} /> private
         </span>
       </div>
 
       <form className="compose-form" onSubmit={handleSubmit}>
         <label className="field">
           <span className="field-label">
-            The ask <span className="field-optional">required</span>
+            Your ask <span className="field-optional">required</span>
           </span>
           <textarea
             className="text-area"
@@ -338,19 +339,18 @@ function SendMizmo({
           type="submit"
         >
           <Icon name="send" />
-          {sending ? 'Encrypting & publishing…' : `Send mizmo to ${recipientName}`}
+          {sending ? 'Sending…' : `Send to ${recipientName}`}
         </button>
       </form>
 
         <p className="compose-note">
-          Your ask is NIP-44 encrypted. The recipient and deadline tags remain
-          public relay metadata.
+          Only you and {recipientName} can see this ask.
         </p>
 
         <div className="compose-email-action">
           <div>
-            <strong>Not on miZmo yet?</strong>
-            <span>Send this ask as an email invitation instead.</span>
+            <strong>Prefer email?</strong>
+            <span>Send this ask to their inbox instead.</span>
           </div>
           <button
             className="button button--secondary button--small"
@@ -387,6 +387,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     invites: sentEmailInvites,
     status: sentEmailStatus,
     error: sentEmailError,
+    refresh: refreshSentEmailInvites,
   } = useSentEmailInvites(identity)
   const {
     contacts,
@@ -396,14 +397,21 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     removeContact,
   } = useContacts(identity)
   const {
+    contacts: emailContacts,
+    addEmailContact,
+    removeEmailContact,
+  } = useEmailContacts(identity)
+  const {
     rankings,
     loaded: rankingsLoaded,
     status: rankingStatus,
     error: rankingError,
     setInboxOrder,
     setOutboxOrder,
+    archiveRecord,
+    restoreRecord,
   } = useMizmoRankings(identity)
-  const [tab, setTab] = useState<'mi' | 'mo'>('mi')
+  const [tab, setTab] = useState<'mi' | 'mo' | 'archive'>('mi')
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
   const [contactsOpen, setContactsOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -429,6 +437,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     () =>
       Array.from(
         new Set([
+          identity.pubkey,
           ...contacts,
           ...inbox.map((record) => record.counterparty),
           ...outbox.map((record) => record.counterparty),
@@ -437,9 +446,18 @@ function OwnDashboard({ identity }: { identity: Identity }) {
             .filter((pubkey): pubkey is string => Boolean(pubkey)),
         ]),
       ).sort(),
-    [contacts, inbox, outbox, sentEmailInvites],
+    [contacts, identity.pubkey, inbox, outbox, sentEmailInvites],
   )
   const { profiles, loading: profilesLoading } = useProfiles(profilePubkeys)
+  const ownProfile = profiles[identity.pubkey]
+  const inviterName = displayName(
+    identity.pubkey,
+    ownProfile?.displayName || ownProfile?.name,
+  )
+  const archivedIds = useMemo(
+    () => new Set(rankings.archived),
+    [rankings.archived],
+  )
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
@@ -463,17 +481,19 @@ function OwnDashboard({ identity }: { identity: Identity }) {
   )
   const filteredInbox = useMemo(
     () =>
-      activeContact
-        ? orderedInbox.filter(
-            (record) => record.counterparty === activeContact,
-          )
-        : orderedInbox,
-    [activeContact, orderedInbox],
+      orderedInbox.filter(
+        (record) =>
+          !archivedIds.has(record.id) &&
+          (!activeContact || record.counterparty === activeContact),
+      ),
+    [activeContact, archivedIds, orderedInbox],
   )
   const outboxGroups = useMemo(() => {
-    const visible = activeContact
-      ? outbox.filter((record) => record.counterparty === activeContact)
-      : outbox
+    const visible = outbox.filter(
+      (record) =>
+        !archivedIds.has(record.id) &&
+        (!activeContact || record.counterparty === activeContact),
+    )
     const grouped = new Map<string, MizmoRecord[]>()
 
     for (const record of visible) {
@@ -495,10 +515,38 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         Math.max(...b.records.map((record) => record.createdAt)) -
         Math.max(...a.records.map((record) => record.createdAt)),
     )
-  }, [activeContact, outbox, rankings])
-  const inboxIds = orderedInbox.map((record) => record.id)
+  }, [activeContact, archivedIds, outbox, rankings])
+  const visibleSentEmailInvites = useMemo(
+    () =>
+      sentEmailInvites.filter((invite) => !archivedIds.has(invite.eventId)),
+    [archivedIds, sentEmailInvites],
+  )
+  const archivedSentEmailInvites = useMemo(
+    () =>
+      sentEmailInvites.filter((invite) => archivedIds.has(invite.eventId)),
+    [archivedIds, sentEmailInvites],
+  )
+  const archivedMizmos = useMemo(
+    () =>
+      orderRecords(
+        [...inbox, ...outbox].filter((record) =>
+          archivedIds.has(record.id),
+        ),
+        rankings.archived,
+        (record) => record.id,
+        (record) => record.createdAt,
+      ),
+    [archivedIds, inbox, outbox, rankings.archived],
+  )
+  const archivedCount =
+    archivedMizmos.length + archivedSentEmailInvites.length
+  const inboxIds = orderedInbox
+    .filter((record) => !archivedIds.has(record.id))
+    .map((record) => record.id)
   const visibleInboxIds = filteredInbox.map((record) => record.id)
-  const visibleEmailInviteCount = activeContact ? 0 : sentEmailInvites.length
+  const visibleEmailInviteCount = activeContact
+    ? 0
+    : visibleSentEmailInvites.length
   const visibleOutboxCount =
     outboxGroups.reduce(
       (count, group) => count + group.records.length,
@@ -530,18 +578,18 @@ function OwnDashboard({ identity }: { identity: Identity }) {
 
   const rankingMessage =
     rankingStatus === 'loading'
-      ? 'Loading your order…'
+      ? 'Loading your saved lists…'
       : rankingStatus === 'saving'
-        ? 'Saving order…'
+        ? 'Saving…'
         : rankingStatus === 'saved'
-          ? 'Order synced'
+          ? 'Saved'
           : ''
 
   return (
     <>
       <section className="dashboard-card">
         <div className="dashboard-top">
-          <div className="tabs" role="tablist" aria-label="Mizmo boxes">
+          <div className="tabs" role="tablist" aria-label="Your asks">
             <button
               aria-selected={tab === 'mi'}
               className={tab === 'mi' ? 'is-active' : ''}
@@ -564,6 +612,17 @@ function OwnDashboard({ identity }: { identity: Identity }) {
               <span className="tab-detail">outbox</span>
               <span className="tab-count">{visibleOutboxCount}</span>
             </button>
+            <button
+              aria-selected={tab === 'archive'}
+              className={tab === 'archive' ? 'is-active' : ''}
+              onClick={() => setTab('archive')}
+              role="tab"
+              type="button"
+            >
+              <span className="tab-word tab-word--archive">archive</span>
+              <span className="tab-detail">saved</span>
+              <span className="tab-count">{archivedCount}</span>
+            </button>
           </div>
           <span className="sync-status">
             <span
@@ -572,21 +631,36 @@ function OwnDashboard({ identity }: { identity: Identity }) {
               }`}
             />
             {status === 'syncing'
-              ? 'Syncing relays…'
+              ? 'Updating…'
               : status === 'live'
-                ? 'Listening live'
-                : 'Waiting'}
+                ? 'Up to date'
+                : 'Ready'}
           </span>
         </div>
 
-        <ContactFilter
-          contacts={contacts}
-          loading={contactsStatus === 'loading' || profilesLoading}
-          onManage={() => setContactsOpen(true)}
-          onSelect={setSelectedContact}
-          profiles={profiles}
-          selected={activeContact}
-        />
+        {tab === 'mo' && (
+          <MoComposer
+            contacts={contacts}
+            emailContacts={emailContacts}
+            identity={identity}
+            inviterName={inviterName}
+            onAddContact={addContact}
+            onAddEmailContact={addEmailContact}
+            onEmailSent={refreshSentEmailInvites}
+            profiles={profiles}
+          />
+        )}
+
+        {tab !== 'archive' && (
+          <ContactFilter
+            contacts={contacts}
+            loading={contactsStatus === 'loading' || profilesLoading}
+            onManage={() => setContactsOpen(true)}
+            onSelect={setSelectedContact}
+            profiles={profiles}
+            selected={activeContact}
+          />
+        )}
 
         {rankingMessage && (
           <p aria-live="polite" className="rank-sync-note">
@@ -609,6 +683,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                 <MizmoCard
                   key={record.id}
                   now={now}
+                  onArchive={() => archiveRecord(record.id)}
                   profile={profiles[record.counterparty]}
                   record={record}
                   reorder={
@@ -633,12 +708,14 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                 tab={tab}
               />
             )
-          ) : outboxGroups.length > 0 || visibleEmailInviteCount > 0 ? (
+          ) : tab === 'mo' ? (
+            outboxGroups.length > 0 || visibleEmailInviteCount > 0 ? (
             <>
-              {!activeContact && sentEmailInvites.length > 0 && (
+              {!activeContact && visibleSentEmailInvites.length > 0 && (
                 <EmailInvitesOutbox
-                  invites={sentEmailInvites}
+                  invites={visibleSentEmailInvites}
                   now={now}
+                  onArchive={archiveRecord}
                   profiles={profiles}
                 />
               )}
@@ -674,6 +751,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                       <MizmoCard
                         key={record.id}
                         now={now}
+                        onArchive={() => archiveRecord(record.id)}
                         profile={profile}
                         record={record}
                         reorder={
@@ -724,9 +802,41 @@ function OwnDashboard({ identity }: { identity: Identity }) {
               )
               })}
             </>
-          ) : (
+            ) : (
             <EmptyBox
               contactName={selectedName}
+              syncing={
+                status === 'syncing' ||
+                receivedEmailStatus === 'loading' ||
+                sentEmailStatus === 'loading'
+              }
+              tab={tab}
+            />
+            )
+          ) : archivedCount > 0 ? (
+            <>
+              {archivedMizmos.map((record) => (
+                <MizmoCard
+                  key={record.id}
+                  now={now}
+                  onRestore={() => restoreRecord(record.id)}
+                  profile={profiles[record.counterparty]}
+                  record={record}
+                />
+              ))}
+              {archivedSentEmailInvites.length > 0 && (
+                <EmailInvitesOutbox
+                  invites={archivedSentEmailInvites}
+                  now={now}
+                  onRestore={restoreRecord}
+                  profiles={profiles}
+                  title="Archived email invitations"
+                />
+              )}
+            </>
+          ) : (
+            <EmptyBox
+              contactName={null}
               syncing={
                 status === 'syncing' ||
                 receivedEmailStatus === 'loading' ||
@@ -741,11 +851,14 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       {contactsOpen && (
         <ContactManager
           contacts={contacts}
+          emailContacts={emailContacts}
           identity={identity}
           loadError={contactsError}
           onAdd={addContact}
+          onAddEmail={addEmailContact}
           onClose={() => setContactsOpen(false)}
           onRemove={handleRemoveContact}
+          onRemoveEmail={removeEmailContact}
           status={contactsStatus}
         />
       )}
@@ -757,10 +870,16 @@ function EmailInvitesOutbox({
   invites,
   now,
   profiles,
+  onArchive,
+  onRestore,
+  title = 'Email invitations',
 }: {
   invites: SentEmailInvite[]
   now: number
   profiles: Record<string, ProfileData | null>
+  onArchive?: (eventId: string) => void
+  onRestore?: (eventId: string) => void
+  title?: string
 }) {
   const pending = invites.filter((invite) => invite.status === 'pending').length
 
@@ -772,10 +891,10 @@ function EmailInvitesOutbox({
             <Icon name="mail" size={18} />
           </span>
           <span>
-            <strong>Email invitations</strong>
+            <strong>{title}</strong>
             <small>
               {invites.length} {invites.length === 1 ? 'invite' : 'invites'}
-              {pending > 0 ? ` · ${pending} awaiting sign-up` : ' · all accepted'}
+              {pending > 0 ? ` · ${pending} waiting to join` : ' · all accepted'}
             </small>
           </span>
         </span>
@@ -786,6 +905,8 @@ function EmailInvitesOutbox({
             invite={invite}
             key={invite.id}
             now={now}
+            onArchive={onArchive}
+            onRestore={onRestore}
             profiles={profiles}
           />
         ))}
@@ -798,10 +919,14 @@ function EmailInviteCard({
   invite,
   now,
   profiles,
+  onArchive,
+  onRestore,
 }: {
   invite: SentEmailInvite
   now: number
   profiles: Record<string, ProfileData | null>
+  onArchive?: (eventId: string) => void
+  onRestore?: (eventId: string) => void
 }) {
   const accepted = invite.status === 'accepted' && invite.recipient !== null
   const recipientProfile = invite.recipient
@@ -837,7 +962,7 @@ function EmailInviteCard({
               accepted ? 'is-accepted' : 'is-pending'
             }`}
           >
-            {accepted ? 'accepted' : 'awaiting sign-up'}
+            {accepted ? 'accepted' : 'waiting to join'}
           </span>
         </div>
       </div>
@@ -848,7 +973,6 @@ function EmailInviteCard({
         {accepted && invite.recipient ? (
           <Link
             className="mizmo-contact"
-            title={invite.recipient}
             to={`/${nip19.npubEncode(invite.recipient)}`}
           >
             <Avatar
@@ -873,15 +997,39 @@ function EmailInviteCard({
             </span>
           </span>
         )}
-        {invite.deadline !== null ? (
-          <span className={`deadline-pill ${overdue ? 'is-overdue' : ''}`}>
-            <Icon name="clock" size={14} />
-            {overdue ? 'Overdue · ' : ''}
-            {formatDeadline(invite.deadline)}
-          </span>
-        ) : (
-          <span className="deadline-pill deadline-pill--quiet">No deadline</span>
-        )}
+        <div className="mizmo-card-actions">
+          {invite.deadline !== null ? (
+            <span className={`deadline-pill ${overdue ? 'is-overdue' : ''}`}>
+              <Icon name="clock" size={14} />
+              {overdue ? 'Overdue · ' : ''}
+              {formatDeadline(invite.deadline)}
+            </span>
+          ) : (
+            <span className="deadline-pill deadline-pill--quiet">
+              No deadline
+            </span>
+          )}
+          {onArchive && (
+            <button
+              className="card-action"
+              onClick={() => onArchive(invite.eventId)}
+              type="button"
+            >
+              <Icon name="archive" size={14} />
+              Archive
+            </button>
+          )}
+          {onRestore && (
+            <button
+              className="card-action"
+              onClick={() => onRestore(invite.eventId)}
+              type="button"
+            >
+              <Icon name="restore" size={14} />
+              Restore
+            </button>
+          )}
+        </div>
       </div>
     </article>
   )
@@ -892,7 +1040,7 @@ function EmptyBox({
   syncing,
   contactName,
 }: {
-  tab: 'mi' | 'mo'
+  tab: 'mi' | 'mo' | 'archive'
   syncing: boolean
   contactName: string | null
 }) {
@@ -901,21 +1049,28 @@ function EmptyBox({
   return (
     <div className="empty-box">
       <span className="empty-glyph">
-        <Icon name={tab === 'mi' ? 'inbox' : 'outbox'} size={30} />
+        <Icon
+          name={tab === 'mi' ? 'inbox' : tab === 'mo' ? 'outbox' : 'archive'}
+          size={30}
+        />
       </span>
       <h3>
         {syncing
-          ? 'Checking the relays…'
+          ? 'Checking for updates…'
+          : tab === 'archive'
+            ? 'Nothing archived.'
           : filtered
             ? `Nothing for ${contactName} in ${tab}.`
             : `Your ${tab} is clear.`}
       </h3>
       <p>
-        {filtered
+        {tab === 'archive'
+          ? 'Archived asks will stay here until you restore them.'
+          : filtered
           ? 'Choose All to see the rest of your list.'
           : tab === 'mi'
-            ? 'Mizmos sent to your address will appear here.'
-            : 'Mizmos you send to other people will appear here.'}
+            ? 'Asks people send you will appear here.'
+            : 'Asks you send other people will appear here.'}
       </p>
     </div>
   )
@@ -927,12 +1082,9 @@ function InvalidAddress() {
       <span className="empty-glyph">
         <Icon name="link" size={30} />
       </span>
-      <p className="eyebrow">Not a mizmo address</p>
-      <h1>That npub didn&apos;t decode.</h1>
-      <p>
-        A mizmo address is a Nostr public key. It should start with{' '}
-        <code>npub1</code> or be a 64-character hex key.
-      </p>
+      <p className="eyebrow">Link not found</p>
+      <h1>This link doesn&apos;t work.</h1>
+      <p>Ask for a fresh link and try again.</p>
       <Link className="button button--primary" to="/">
         Back home
         <Icon name="arrow-right" />

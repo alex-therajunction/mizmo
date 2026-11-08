@@ -45,7 +45,7 @@ export function importIdentity(value: string): Identity {
   const clean = value.trim().replace(/^nostr:/i, '')
 
   if (!clean) {
-    throw new Error('Paste your nsec or private key to continue.')
+    throw new Error('Paste your recovery code to continue.')
   }
 
   try {
@@ -55,7 +55,7 @@ export function importIdentity(value: string): Identity {
       const decoded = nip19.decode(normalized)
 
       if (decoded.type !== 'nsec') {
-        throw new Error('That is not a valid nsec.')
+        throw new Error("That recovery code isn't valid.")
       }
 
       return identityFromSecretKey(decoded.data)
@@ -63,11 +63,11 @@ export function importIdentity(value: string): Identity {
 
     return identityFromSecretKey(hexToBytes(clean))
   } catch (error) {
-    if (error instanceof Error && error.message.includes('64 hexadecimal')) {
+    if (error instanceof Error && error.message.includes('64 characters')) {
       throw error
     }
 
-    throw new Error('That key could not be read. Check it and try again.')
+    throw new Error('That code could not be read. Check it and try again.')
   }
 }
 
@@ -85,14 +85,14 @@ export function decryptIdentityBackup(
   const clean = value.replace(/\s+/g, '').toLowerCase()
 
   if (!nip19.NostrTypeGuard.isNcryptsec(clean)) {
-    throw new Error('Paste a valid NIP-49 encrypted key to continue.')
+    throw new Error('Paste a valid backup code to continue.')
   }
 
   try {
     return identityFromSecretKey(decryptNip49(clean, password))
   } catch {
     throw new Error(
-      'That password did not unlock this backup, or the encrypted key is damaged.',
+      "That password didn't work, or the backup code is damaged.",
     )
   }
 }

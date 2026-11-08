@@ -129,7 +129,7 @@ export function EmailInviteModal({
         eyebrow="Email invitation"
         onClose={onClose}
         open
-        title="Your mizmo is ready to send."
+        title="Your ask is ready to send."
       >
         <div className="email-invite-result">
           <span className="sent-icon email-invite-result-icon">
@@ -137,7 +137,7 @@ export function EmailInviteModal({
           </span>
           <p>
             An email draft for <strong>{result.email}</strong> should have
-            opened. The message links to a private, encrypted invitation.
+            opened. The message links to a private invitation.
           </p>
           {result.deadline !== null && (
             <span className="deadline-pill">
@@ -147,8 +147,8 @@ export function EmailInviteModal({
           )}
           {!result.metadataSynced && (
             <p className="form-error">
-              The invitation was published, but its pending marker could not
-              sync. It may appear without an email label in mo.
+              The email is ready, but we couldn&apos;t update your sent list
+              yet. It may appear without an email label in your sent asks.
             </p>
           )}
           <div className="button-row button-row--center">
@@ -166,8 +166,8 @@ export function EmailInviteModal({
             </button>
           </div>
           <p className="microcopy">
-            The email contains a signup link, not the ask itself. Opening it
-            creates a local key, adds you as a contact, and delivers the mizmo.
+            Opening the link shows them your ask and adds you to their
+            contacts. No password needed.
           </p>
         </div>
       </Modal>
@@ -184,8 +184,8 @@ export function EmailInviteModal({
     >
       <form className="compose-form email-invite-form" onSubmit={handleSubmit}>
         <p className="auth-lede">
-          Send this mizmo to someone who does not have a miZmo key yet. The
-          default email app opens with the invitation ready to send.
+          Send this ask to someone by email. Your email app opens with the
+          invitation ready to send.
         </p>
 
         <label className="field">
@@ -205,7 +205,7 @@ export function EmailInviteModal({
 
         <label className="field">
           <span className="field-label">
-            The ask <span className="field-optional">required</span>
+            Your ask <span className="field-optional">required</span>
           </span>
           <textarea
             className="text-area"
@@ -245,12 +245,10 @@ export function EmailInviteModal({
           type="submit"
         >
           <Icon name="mail" />
-          {busy ? 'Encrypting & publishing…' : 'Create & open email'}
+          {busy ? 'Sending…' : 'Create & open email'}
         </button>
         <p className="compose-note email-invite-note">
-          The ask is encrypted to a one-time key carried in the link fragment.
-          Your email address and the invite secret are never published to a
-          relay.
+          Opening the link shows them your ask. No password needed.
         </p>
       </form>
     </Modal>

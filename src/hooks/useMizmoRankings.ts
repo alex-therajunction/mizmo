@@ -117,7 +117,7 @@ export function useMizmoRankings(identity: Identity | null) {
                     error:
                       caught instanceof Error
                         ? caught.message
-                        : 'The saved order could not be synced.',
+                        : 'Your changes are saved here, but could not be updated everywhere.',
                   }
                 : current,
             )
@@ -133,7 +133,8 @@ export function useMizmoRankings(identity: Identity | null) {
           data: selected,
           loaded: true,
           status: 'error',
-          error: 'Rankings could not be fetched. Showing this device’s order.',
+          error:
+            "We couldn't load your saved order. Showing this device's version.",
         })
       })
 
@@ -195,7 +196,7 @@ export function useMizmoRankings(identity: Identity | null) {
                   error:
                     caught instanceof Error
                       ? caught.message
-                      : 'Your order could not be synced.',
+                      : 'Your changes are saved here, but could not be updated everywhere.',
                 }
               : latest,
           )
@@ -236,6 +237,29 @@ export function useMizmoRankings(identity: Identity | null) {
     [commit],
   )
 
+  const archiveRecord = useCallback(
+    (id: string) => {
+      commit((currentRankings) => ({
+        ...currentRankings,
+        archived: [
+          id,
+          ...currentRankings.archived.filter((entry) => entry !== id),
+        ],
+      }))
+    },
+    [commit],
+  )
+
+  const restoreRecord = useCallback(
+    (id: string) => {
+      commit((currentRankings) => ({
+        ...currentRankings,
+        archived: currentRankings.archived.filter((entry) => entry !== id),
+      }))
+    },
+    [commit],
+  )
+
   return {
     rankings: current.data ?? emptyRankings(),
     loaded: current.loaded,
@@ -243,5 +267,7 @@ export function useMizmoRankings(identity: Identity | null) {
     error: current.error,
     setInboxOrder,
     setOutboxOrder,
+    archiveRecord,
+    restoreRecord,
   }
 }

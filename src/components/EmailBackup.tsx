@@ -36,9 +36,9 @@ export function EmailBackup({ identity }: { identity: Identity }) {
       const encrypted = encryptIdentityBackup(identity, password)
       setBackup(encrypted)
       setPassword('')
-      window.location.href = buildBackupEmailUrl(encrypted, identity.npub)
+      window.location.href = buildBackupEmailUrl(encrypted)
     } catch {
-      setError('The encrypted backup could not be created.')
+      setError('The login link could not be created.')
     } finally {
       setBusy(false)
     }
@@ -62,7 +62,7 @@ export function EmailBackup({ identity }: { identity: Identity }) {
         <div>
           <p className="settings-label">Email login link</p>
           <p className="microcopy">
-            Sign in on another device with an encrypted link sent to your
+            Get back in on another device with a private link sent to your
             email.
           </p>
         </div>
@@ -80,7 +80,7 @@ export function EmailBackup({ identity }: { identity: Identity }) {
           <div className="button-row">
             <a
               className="button button--secondary button--small"
-              href={buildBackupEmailUrl(backup, identity.npub)}
+              href={buildBackupEmailUrl(backup)}
             >
               <Icon name="send" size={16} />
               Open email app
@@ -95,8 +95,9 @@ export function EmailBackup({ identity }: { identity: Identity }) {
             </button>
           </div>
           <p className="warning-copy">
-            The password is not included in the email and cannot be recovered.
-            Store it in a password manager; you will need it to use the link.
+            Your password is never included in the email and cannot be
+            recovered. Store it somewhere safe; you will need it to use the
+            link.
           </p>
         </div>
       ) : !showPasswordPrompt ? (

@@ -3,6 +3,7 @@ export type RankingPayload = {
   updatedAt: number
   inbox: string[]
   outbox: Record<string, string[]>
+  archived: string[]
 }
 
 export function emptyRankings(): RankingPayload {
@@ -11,6 +12,7 @@ export function emptyRankings(): RankingPayload {
     updatedAt: 0,
     inbox: [],
     outbox: {},
+    archived: [],
   }
 }
 
@@ -55,6 +57,7 @@ export function parseRankingPayload(value: unknown): RankingPayload | null {
     updatedAt: payload.updatedAt,
     inbox: validIds(payload.inbox),
     outbox,
+    archived: validIds(payload.archived),
   }
 }
 

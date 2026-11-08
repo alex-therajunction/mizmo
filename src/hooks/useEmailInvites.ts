@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Identity } from '../lib/identity'
 import {
   EMAIL_INVITE_CLAIM_TAG,
@@ -35,6 +35,7 @@ export function useSentEmailInvites(identity: Identity | null) {
     status: 'idle',
     error: '',
   })
+  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     if (!identity) return
@@ -135,7 +136,8 @@ export function useSentEmailInvites(identity: Identity | null) {
           identityKey: identity.pubkey,
           invites: [],
           status: 'error',
-          error: 'Email invitations could not be loaded from the relays.',
+          error:
+            "We couldn't load your email invitations. Check your connection and try again.",
         })
       })
 
@@ -143,7 +145,7 @@ export function useSentEmailInvites(identity: Identity | null) {
       active = false
       claimSubscription?.close()
     }
-  }, [identity])
+  }, [identity, reloadToken])
 
   const current =
     identity && state.identityKey === identity.pubkey
@@ -155,10 +157,16 @@ export function useSentEmailInvites(identity: Identity | null) {
           error: '',
         }
 
+  const refresh = useCallback(
+    () => setReloadToken((value) => value + 1),
+    [],
+  )
+
   return {
     invites: current.invites,
     status: current.status,
     error: current.error,
+    refresh,
   }
 }
 
@@ -184,7 +192,7 @@ export function useReceivedEmailInvites(identity: Identity | null) {
           invites: result.invites,
           status: 'ready',
           error: result.error
-            ? 'Email invitations are showing from this device because the relays could not be reached.'
+            ? 'Showing invitations saved on this device. Check your connection to update them.'
             : '',
         })
       })
@@ -194,7 +202,8 @@ export function useReceivedEmailInvites(identity: Identity | null) {
           identityKey: identity.pubkey,
           invites: local,
           status: 'error',
-          error: 'Email invitations could not be synced from the relays.',
+          error:
+            "We couldn't update your email invitations. Check your connection and try again.",
         })
       })
 

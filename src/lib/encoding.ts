@@ -6,7 +6,7 @@ export function hexToBytes(hex: string): Uint8Array {
   const clean = hex.trim().toLowerCase()
 
   if (!/^[0-9a-f]{64}$/.test(clean)) {
-    throw new Error('A private key must be 64 hexadecimal characters.')
+    throw new Error('A recovery code must be 64 characters long.')
   }
 
   return Uint8Array.from(

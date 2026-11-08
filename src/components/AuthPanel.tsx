@@ -28,7 +28,7 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
     try {
       finish(createIdentity())
     } catch {
-      setError('The key could not be saved in this browser.')
+      setError('Your account could not be saved on this device.')
     } finally {
       setBusy(false)
     }
@@ -45,7 +45,7 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
       setError(
         caught instanceof Error
           ? caught.message
-          : 'That key could not be read.',
+          : 'That code could not be read.',
       )
     } finally {
       setBusy(false)
@@ -54,7 +54,7 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
 
   return (
     <div className={`auth-panel ${compact ? 'auth-panel--compact' : ''}`}>
-      <div className="auth-switch" role="tablist" aria-label="Key setup">
+      <div className="auth-switch" role="tablist" aria-label="Account setup">
         <button
           aria-selected={mode === 'create'}
           className={mode === 'create' ? 'is-active' : ''}
@@ -77,15 +77,14 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
           role="tab"
           type="button"
         >
-          Use a key
+          I have an account
         </button>
       </div>
 
       {mode === 'create' ? (
         <div className="auth-pane" role="tabpanel">
           <p className="auth-lede">
-            Make a Nostr identity in this browser. No email, password, or
-            account.
+            Create your miZmo account in seconds. No password to remember.
           </p>
           <button
             className="button button--primary button--wide"
@@ -94,23 +93,23 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
             type="button"
           >
             <Icon name="spark" />
-            {busy ? 'Creating…' : 'Create my mizmo key'}
+            {busy ? 'Creating…' : 'Create my account'}
           </button>
           <p className="microcopy">
-            Your private key is saved in local storage on this device. Back it
-            up from settings before clearing browser data.
+            You&apos;ll stay signed in on this device. Set up a backup email in
+            Settings so you can get back in anywhere.
           </p>
         </div>
       ) : (
         <form className="auth-pane" onSubmit={handleImport} role="tabpanel">
           <label className="field">
-            <span className="field-label">Your Nostr private key</span>
+            <span className="field-label">Your recovery code</span>
             <input
               autoCapitalize="none"
               autoComplete="off"
               className="text-input text-input--mono"
               onChange={(event) => setSecretInput(event.target.value)}
-              placeholder="nsec1…"
+              placeholder="Paste your recovery code"
               spellCheck={false}
               type="password"
               value={secretInput}
@@ -121,11 +120,12 @@ export function AuthPanel({ onAuthenticated, compact = false }: AuthPanelProps) 
             disabled={busy}
             type="submit"
           >
-            <Icon name="key" />
-            {busy ? 'Opening…' : 'Use this key'}
+            <Icon name="arrow-right" />
+            {busy ? 'Opening…' : 'Continue'}
           </button>
           <p className="microcopy">
-            The key stays in this browser and is never sent to a server.
+            Keep this code private. It&apos;s how you get back into your
+            account.
           </p>
         </form>
       )}

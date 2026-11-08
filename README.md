@@ -1,22 +1,24 @@
 # miZmo.me
 
-A client-side Nostr app for sending a **mizmo** — an encrypted reminder for an
-ask, with an optional deadline.
+Ask someone to do something, add a deadline if it matters, and keep track of it
+in one calm place. Just enter their email — miZmo takes care of the rest.
 
-- Visiting `/<npub>` lets a signed-in user send a mizmo to that contact.
-- Visiting your own `/<npub>` opens **mi** (received) and **mo** (sent).
-- Profiles use public Nostr metadata, including a name and a resized avatar
-  embedded as a data URL.
-- Contacts come from the signed-in user's NIP-02 contact list and can be added,
-  removed, and used to filter both boxes.
-- Inbox order and per-contact outbox order are private, synced app data.
-- Keys are generated or imported in the browser and stored in `localStorage`.
-  Settings can also create an encrypted NIP-49 login link and open a pre-filled
-  email draft for saving it.
-- A mizmo can be sent by email to someone without a key yet. The email opens
-  the default mail client with a signup link; accepting it adds the inviter as
-  a contact and delivers the encrypted ask.
-- There is no application server. The browser connects directly to Nostr relays.
+## What you can do
+
+- Open your personal miZmo link to see **mi** (asks people send you) and **mo**
+  (asks you send).
+- Add a contact by email or with their miZmo link.
+- Write an ask in **mo**, choose a contact or enter an email address, and add a
+  deadline if you need one.
+- Archive asks you are done with, then restore them from the **archive** tab.
+- Sign in on another device with your recovery code or an email login link.
+- Save a backup of your account so you can get back in later.
+
+Visitors see a simple sign-up page first. Once signed in, visiting the home
+page opens your inbox.
+
+The sections below are for developers. They describe how the app works under
+the hood.
 
 ## Stack
 
@@ -58,10 +60,11 @@ recipient and deadline tags are public relay metadata.
   embedded as a data URL. Other metadata fields are preserved when editing.
 - **Contacts:** NIP-02 kind `3` contact list. The app preserves existing `p`
   tags, relay hints, and petnames. Successful sends add new recipients.
-- **Order:** kind `30078` app data with `d=mizmo.me/rankings`, encrypted
+- **Order and archive:** kind `30078` app data with `d=mizmo.me/rankings`, encrypted
   NIP-44 to the user's own key. Its payload is
-  `{ version: 1, updatedAt, inbox: string[], outbox: { [pubkey]: string[] } }`.
-  The browser also keeps a local copy so ordering survives relay failures.
+  `{ version: 1, updatedAt, inbox: string[], outbox: { [pubkey]: string[] }, archived: string[] }`.
+  The browser also keeps a local copy so ordering and archives survive relay
+  failures.
 
 ## Keys and privacy
 
@@ -89,8 +92,9 @@ The compose page for a Nostr contact also offers **Invite by email** for a new
 person. The browser creates a one-time Nostr key, publishes a signed kind
 `30078` invitation encrypted to that key, and opens a `mailto:` draft. The
 email link carries the invite event ID and one-time secret in the URL fragment,
-so neither the ask nor the secret is sent to the static host. The recipient's
-email address is stored only in the inviter's self-encrypted app data.
+so neither the ask nor the secret is sent to the static host. Recipient email
+addresses are kept locally with the inviter's contacts, and sent-invite
+metadata is also stored in the inviter's self-encrypted app data.
 
 Opening `/join#invite=…&key=…` creates or imports a key, verifies and decrypts
 the invitation, adds the inviter through NIP-02, stores the mizmo in

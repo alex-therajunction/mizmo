@@ -141,8 +141,8 @@ export function JoinPage() {
           <span className="sent-icon">
             <Icon name="check" size={28} />
           </span>
-          <p className="eyebrow">Mizmo received</p>
-          <h1>{inviterName}&apos;s ask is in your mi.</h1>
+          <p className="eyebrow">Ask received</p>
+          <h1>{inviterName}&apos;s ask is in your inbox.</h1>
           <div className="join-mizmo-preview">
             <p>{accepted.invite.ask}</p>
             {accepted.invite.deadline !== null && (
@@ -153,32 +153,32 @@ export function JoinPage() {
             )}
           </div>
           <p className="join-lede">
-            {inviterName} was added to your contacts automatically. The mizmo
-            is encrypted to your key and synced to your account.
+            {inviterName} was added to your contacts automatically. This ask is
+            saved privately in your account.
           </p>
           {!accepted.contactAdded && (
             <p className="form-error">
-              The mizmo arrived, but {inviterName} could not be added to your
+              The ask arrived, but {inviterName} could not be added to your
               contacts yet. Reopen this link to retry.
             </p>
           )}
           {!accepted.claimPublished && (
             <p className="form-error">
-              The mizmo arrived, but the sender could not be notified yet.
+              The ask arrived, but the sender could not be notified yet.
               Reopen this link to retry.
             </p>
           )}
           {!accepted.metadataSynced && (
             <p className="form-error">
-              The mizmo is saved on this device, but it could not sync to your
-              relays yet.
+              This ask is saved on this device, but it hasn&apos;t finished
+              updating yet.
             </p>
           )}
           <Link
             className="button button--primary button--wide"
             to={`/${identity.npub}`}
           >
-            Open my mi
+            Open my inbox
             <Icon name="arrow-right" />
           </Link>
         </section>
@@ -193,8 +193,8 @@ export function JoinPage() {
           <Icon name="mail" size={30} />
         </span>
         <p className="eyebrow">Email invitation</p>
-        <h1>Finding your mizmo…</h1>
-        <p>Checking the relays for the encrypted invitation.</p>
+        <h1>Finding your ask…</h1>
+        <p>Checking for your invitation.</p>
       </div>
     )
   }
@@ -233,15 +233,15 @@ export function JoinPage() {
             <Icon name="mail" size={28} />
           </span>
           <p className="eyebrow">Your invitation</p>
-          <h1>You sent this mizmo.</h1>
+          <h1>You sent this ask.</h1>
           <p className="join-lede">
-            Open your mo to see whether the recipient has accepted it.
+            Open your sent asks to see whether the recipient has accepted it.
           </p>
           <Link
             className="button button--primary button--wide"
             to={`/${identity.npub}`}
           >
-            Open my mo
+            Open my sent asks
             <Icon name="arrow-right" />
           </Link>
         </section>
@@ -253,11 +253,10 @@ export function JoinPage() {
     <div className="page join-page">
       <section className="join-card">
         <p className="eyebrow">A private invitation</p>
-        <h1>{inviterName} sent you a mizmo.</h1>
+        <h1>{inviterName} sent you an ask.</h1>
         <p className="join-lede">
-          Sign in with your key or create a new one. Your key stays in this
-          browser, and opening the invitation adds {inviterName} to your
-          contacts automatically.
+          Sign in with your recovery code or create an account. Opening the
+          invitation adds {inviterName} to your contacts automatically.
         </p>
 
         <div className="join-sender">
@@ -271,7 +270,7 @@ export function JoinPage() {
             <span className="settings-label">From</span>
             <strong>{inviterName}</strong>
             <span className="join-private-note">
-              <Icon name="key" size={13} /> encrypted ask
+              <Icon name="lock" size={13} /> private ask
             </span>
           </div>
           {deadline !== null && (
@@ -285,7 +284,7 @@ export function JoinPage() {
         {phase === 'accepting' || (identity && phase === 'idle') ? (
           <div className="join-accepting" aria-live="polite">
             <span className="status-dot is-pulsing" />
-            Adding the mizmo to your mi…
+            Adding this ask to your inbox…
           </div>
         ) : phase === 'error' ? (
           <div className="join-error">
@@ -306,8 +305,7 @@ export function JoinPage() {
         )}
 
         <p className="microcopy join-note">
-          The invitation link is a private capability. Anyone who receives it
-          can open this mizmo.
+          Keep this link private. Anyone who has it can open this ask.
         </p>
       </section>
     </div>

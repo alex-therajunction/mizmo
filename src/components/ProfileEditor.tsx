@@ -90,7 +90,7 @@ export function ProfileEditor({ identity, profile }: ProfileEditorProps) {
         <div className="profile-editor-copy">
           <p className="settings-label">Your profile</p>
           <p className="microcopy">
-            These details are published as public Nostr metadata.
+            Your name and photo are visible to people you share your link with.
           </p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export function ProfileEditor({ identity, profile }: ProfileEditorProps) {
         )}
       </div>
       <p className="field-hint">
-        Square-cropped and resized in your browser before publishing.
+        We&apos;ll crop and resize your photo for you.
       </p>
 
       {error && <p className="form-error">{error}</p>}
@@ -159,7 +159,7 @@ export function ProfileEditor({ identity, profile }: ProfileEditorProps) {
         type="submit"
       >
         <Icon name="check" size={16} />
-        {saving ? 'Publishing…' : 'Save profile'}
+        {saving ? 'Saving…' : 'Save profile'}
       </button>
     </form>
   )

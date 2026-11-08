@@ -29,7 +29,7 @@ export function ImportPage() {
     setError('')
 
     if (!encryptedKey.trim()) {
-      setError('Paste the encrypted key from your backup email.')
+      setError('Paste the backup code from your email.')
       return
     }
 
@@ -57,11 +57,11 @@ export function ImportPage() {
   return (
     <div className="page import-page">
       <section className="import-card">
-        <p className="eyebrow">Encrypted backup</p>
-        <h1>Unlock your miZmo key.</h1>
+        <p className="eyebrow">Welcome back</p>
+        <h1>Get back into miZmo.</h1>
         <p className="import-lede">
-          This backup is encrypted with NIP-49. Enter the password you chose
-          when you emailed it to yourself.
+          Paste the backup code from your email, then enter the password you
+          chose when you created it.
         </p>
 
         <form className="import-form" onSubmit={handleSubmit}>
@@ -71,7 +71,7 @@ export function ImportPage() {
             </div>
           ) : (
             <label className="field">
-              <span className="field-label">Encrypted key</span>
+              <span className="field-label">Backup code</span>
               <textarea
                 autoCapitalize="none"
                 autoComplete="off"
@@ -80,7 +80,7 @@ export function ImportPage() {
                   setEncryptedKey(event.target.value)
                   setError('')
                 }}
-                placeholder="ncryptsec1…"
+                placeholder="Paste your backup code"
                 spellCheck={false}
                 value={encryptedKey}
               />
@@ -105,8 +105,8 @@ export function ImportPage() {
 
           {identity && (
             <p className="warning-copy">
-              You are already signed in in this browser. Importing this backup
-              will replace the key currently saved here.
+              You&apos;re already signed in here. Continuing will replace the
+              account saved on this device.
             </p>
           )}
 
@@ -117,14 +117,14 @@ export function ImportPage() {
             disabled={busy}
             type="submit"
           >
-            <Icon name="key" />
-            {busy ? 'Unlocking…' : 'Unlock and import'}
+            <Icon name="arrow-right" />
+            {busy ? 'Opening…' : 'Continue'}
           </button>
         </form>
 
         <p className="microcopy import-note">
-          The key is decrypted in this browser and saved to local storage. The
-          backup password never leaves your device.
+          This code only works with your password. Your password never leaves
+          this device.
         </p>
       </section>
     </div>

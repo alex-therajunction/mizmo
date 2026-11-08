@@ -1,6 +1,7 @@
 import type { SVGProps } from 'react'
 
 export type IconName =
+  | 'archive'
   | 'arrow-right'
   | 'check'
   | 'chevron-down'
@@ -12,16 +13,24 @@ export type IconName =
   | 'inbox'
   | 'key'
   | 'link'
+  | 'lock'
   | 'logout'
   | 'mail'
   | 'outbox'
   | 'plus'
+  | 'restore'
   | 'send'
   | 'settings'
   | 'spark'
   | 'trash'
 
 const paths: Record<IconName, React.ReactNode> = {
+  archive: (
+    <>
+      <path d="M4 7h16v13H4z" />
+      <path d="M3 4h18v3H3zM9.5 11h5" />
+    </>
+  ),
   'arrow-right': <path d="M5 12h14m-5-5 5 5-5 5" />,
   check: <path d="m5 12 4 4L19 6" />,
   'chevron-down': <path d="m6 9 6 6 6-6" />,
@@ -68,6 +77,12 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="m16.5 7.5 1.5-1.5a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0" transform="translate(-3 0)" />
     </>
   ),
+  lock: (
+    <>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </>
+  ),
   logout: (
     <>
       <path d="M10 5H5v14h5" />
@@ -88,6 +103,14 @@ const paths: Record<IconName, React.ReactNode> = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  restore: (
+    <>
+      <path d="M4 7h16v13H4z" />
+      <path d="M3 4h18v3H3z" />
+      <path d="M9 13.5a3 3 0 1 1 2.6 3" />
+      <path d="M9 10.5v3h3" />
+    </>
+  ),
   send: <path d="m21 3-7.5 18-3-8.5L2 9.5 21 3Z" />,
   settings: (
     <>

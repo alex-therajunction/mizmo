@@ -20,6 +20,8 @@ type MizmoCardProps = {
   now: number
   profile?: ProfileData | null
   reorder?: ReorderControls
+  onArchive?: () => void
+  onRestore?: () => void
 }
 
 export function MizmoCard({
@@ -27,6 +29,8 @@ export function MizmoCard({
   now,
   profile,
   reorder,
+  onArchive,
+  onRestore,
 }: MizmoCardProps) {
   const [dragging, setDragging] = useState(false)
   const overdue = record.deadline !== null && record.deadline < now
@@ -115,7 +119,7 @@ export function MizmoCard({
 
       {record.decryptionError ? (
         <p className="mizmo-ask mizmo-ask--error">
-          This mizmo could not be decrypted on this device.
+          This ask can&apos;t be opened on this device.
         </p>
       ) : (
         <p className="mizmo-ask">{record.ask}</p>
@@ -124,7 +128,6 @@ export function MizmoCard({
       <div className="mizmo-card-bottom">
         <Link
           className="mizmo-contact"
-          title={record.counterparty}
           to={`/${counterpartyNpub}`}
         >
           <Avatar
@@ -138,15 +141,39 @@ export function MizmoCard({
             <span className="mizmo-contact-name">{contactName}</span>
           </span>
         </Link>
-        {record.deadline !== null ? (
-          <span className={`deadline-pill ${overdue ? 'is-overdue' : ''}`}>
-            <Icon name="clock" size={14} />
-            {overdue ? 'Overdue · ' : ''}
-            {formatDeadline(record.deadline)}
-          </span>
-        ) : (
-          <span className="deadline-pill deadline-pill--quiet">No deadline</span>
-        )}
+        <div className="mizmo-card-actions">
+          {record.deadline !== null ? (
+            <span className={`deadline-pill ${overdue ? 'is-overdue' : ''}`}>
+              <Icon name="clock" size={14} />
+              {overdue ? 'Overdue · ' : ''}
+              {formatDeadline(record.deadline)}
+            </span>
+          ) : (
+            <span className="deadline-pill deadline-pill--quiet">
+              No deadline
+            </span>
+          )}
+          {onArchive && (
+            <button
+              className="card-action"
+              onClick={onArchive}
+              type="button"
+            >
+              <Icon name="archive" size={14} />
+              Archive
+            </button>
+          )}
+          {onRestore && (
+            <button
+              className="card-action"
+              onClick={onRestore}
+              type="button"
+            >
+              <Icon name="restore" size={14} />
+              Restore
+            </button>
+          )}
+        </div>
       </div>
     </article>
   )

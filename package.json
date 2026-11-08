@@ -2,7 +2,7 @@
   "name": "mizmo",
   "private": true,
   "version": "1.0.0",
-  "description": "miZmo.me — encrypted reminders for asks, built on Nostr.",
+  "description": "miZmo.me — ask someone to do something and keep track of it.",
   "type": "module",
   "packageManager": "pnpm@12.11.2",
   "scripts": {

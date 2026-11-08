@@ -38,7 +38,8 @@ export function useContacts(identity: Identity | null) {
           identityKey: identity.pubkey,
           contacts: [],
           status: 'error',
-          error: 'Contacts could not be loaded from the relays.',
+          error:
+            "We couldn't load your contacts. Check your connection and try again.",
         })
       })
 

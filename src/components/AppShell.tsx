@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useIdentity } from '../context/useIdentity'
 import { useProfiles } from '../hooks/useProfiles'
 import { copyText, displayName } from '../lib/format'
-import { RELAYS } from '../lib/nostr'
 import { Avatar } from './Avatar'
 import { EmailBackup } from './EmailBackup'
 import { Icon } from './Icon'
@@ -55,7 +54,7 @@ export function AppShell({ children, onOpenAuth }: AppShellProps) {
                   size={28}
                 />
                 <span>{ownName}</span>
-                <span className="identity-chip-label">my mi / mo</span>
+                <span className="identity-chip-label">my inbox</span>
               </Link>
               <button
                 aria-label="Open settings"
@@ -85,8 +84,7 @@ export function AppShell({ children, onOpenAuth }: AppShellProps) {
       <footer className="site-footer">
         <span>miZmo.me — a small nudge for a big ask.</span>
         <span className="footer-meta">
-          <span className="status-dot" /> Nostr-native · {RELAYS.length} relays ·
-          no app server
+          <span className="status-dot" /> Private by design · no app to install
         </span>
       </footer>
 
@@ -146,7 +144,7 @@ function SettingsModal({
 
   return (
     <Modal
-      eyebrow="Your identity"
+      eyebrow="Your account"
       onClose={close}
       open={open}
       title="Settings"
@@ -161,7 +159,7 @@ function SettingsModal({
         />
         <div>
           <p className="settings-label">{name}</p>
-          <p className="settings-address">{address}</p>
+          <p className="settings-address">Your personal miZmo link</p>
         </div>
       </div>
 
@@ -172,14 +170,14 @@ function SettingsModal({
           type="button"
         >
           <Icon name={copied === 'address' ? 'check' : 'copy'} size={16} />
-          {copied === 'address' ? 'Copied' : 'Copy address'}
+          {copied === 'address' ? 'Copied' : 'Copy my link'}
         </button>
         <Link
           className="button button--ghost button--small"
           onClick={close}
           to={`/${identity.npub}`}
         >
-          Open my mi / mo
+          Open my inbox
           <Icon name="arrow-right" size={16} />
         </Link>
       </div>
@@ -193,17 +191,15 @@ function SettingsModal({
       <div className="settings-section">
         <div className="settings-heading">
           <div>
-            <p className="settings-label">Private key</p>
-            <p className="microcopy">
-              Stored as plain text in this browser&apos;s local storage.
-            </p>
+            <p className="settings-label">Recovery code</p>
+            <p className="microcopy">Use this to get back into your account.</p>
           </div>
           <button
             className="text-button"
             onClick={() => setShowKey((current) => !current)}
             type="button"
           >
-            {showKey ? 'Hide' : 'Reveal'}
+            {showKey ? 'Hide' : 'Show'}
           </button>
         </div>
 
@@ -211,7 +207,7 @@ function SettingsModal({
           <div className="key-reveal">
             <code>{identity.nsec}</code>
             <button
-              aria-label="Copy private key"
+              aria-label="Copy recovery code"
               className="icon-button"
               onClick={() => copy(identity.nsec, 'key')}
               type="button"
@@ -222,9 +218,9 @@ function SettingsModal({
         )}
 
         <p className="warning-copy">
-          Anyone with this key can act as you. Back it up somewhere private.
-          Clearing browser data or signing out without a backup will lose this
-          identity.
+          Keep this code somewhere safe. Anyone with it can sign in as you. If
+          you clear this browser or sign out without saving it, you may lose
+          access to your account.
         </p>
       </div>
 
@@ -233,22 +229,17 @@ function SettingsModal({
       </div>
 
       <div className="settings-section">
-        <p className="settings-label">Relays</p>
-        <ul className="relay-list">
-          {RELAYS.map((relay) => (
-            <li key={relay}>
-              <span className="status-dot" />
-              {relay.replace('wss://', '')}
-            </li>
-          ))}
-        </ul>
+        <p className="settings-label">Privacy</p>
+        <p className="microcopy">
+          Your asks are only visible to you and the person you&apos;re asking.
+        </p>
       </div>
 
       <div className="settings-section settings-section--danger">
         {confirmingSignOut ? (
           <div className="signout-confirm">
             <p>
-              Sign out and forget this key? Make sure you copied your nsec
+              Sign out of this device? Make sure you saved your recovery code
               first — this cannot be undone.
             </p>
             <div className="button-row">
@@ -261,7 +252,7 @@ function SettingsModal({
                 type="button"
               >
                 <Icon name="logout" size={16} />
-                Yes, forget my key
+                Yes, sign out
               </button>
               <button
                 className="button button--ghost button--small"
@@ -279,7 +270,7 @@ function SettingsModal({
             type="button"
           >
             <Icon name="logout" size={16} />
-            Sign out &amp; forget key
+            Sign out of this device
           </button>
         )}
       </div>

@@ -1,7 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { nip19 } from 'nostr-tools'
+import {
+  isEmailAddress,
+  normalizeEmail,
+  type EmailContact,
+} from '../hooks/useEmailContacts'
 import { useProfiles } from '../hooks/useProfiles'
-import { displayName, shortenId } from '../lib/format'
+import { displayName } from '../lib/format'
 import type { Identity } from '../lib/identity'
 import { normalizeNostrId, type ProfileData } from '../lib/nostr'
 import { Avatar } from './Avatar'
@@ -11,20 +15,26 @@ import { Modal } from './Modal'
 type ContactManagerProps = {
   identity: Identity
   contacts: string[]
+  emailContacts: EmailContact[]
   status: 'idle' | 'loading' | 'ready' | 'error'
   loadError: string
   onAdd: (pubkey: string) => Promise<void>
+  onAddEmail: (email: string) => void | Promise<void>
   onRemove: (pubkey: string) => Promise<void>
+  onRemoveEmail: (email: string) => void
   onClose: () => void
 }
 
 export function ContactManager({
   identity,
   contacts,
+  emailContacts,
   status,
   loadError,
   onAdd,
+  onAddEmail,
   onRemove,
+  onRemoveEmail,
   onClose,
 }: ContactManagerProps) {
   const { profiles } = useProfiles(contacts)
@@ -42,10 +52,38 @@ export function ContactManager({
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
-    const pubkey = normalizeNostrId(lookup)
+    const cleanLookup = lookup.trim()
+
+    if (isEmailAddress(cleanLookup)) {
+      const email = normalizeEmail(cleanLookup)
+
+      if (emailContacts.some((contact) => contact.email === email)) {
+        setError('That email is already in your contacts.')
+        return
+      }
+
+      setBusy('add')
+
+      try {
+        await onAddEmail(email)
+        setLookup('')
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : 'That email contact could not be added.',
+        )
+      } finally {
+        setBusy(null)
+      }
+
+      return
+    }
+
+    const pubkey = normalizeNostrId(cleanLookup)
 
     if (!pubkey) {
-      setError('Enter a valid npub, nprofile, or hex public key.')
+      setError('Enter their miZmo link or email address.')
       return
     }
 
@@ -92,6 +130,11 @@ export function ContactManager({
     }
   }
 
+  const handleRemoveEmail = (email: string) => {
+    setError('')
+    onRemoveEmail(email)
+  }
+
   return (
     <Modal
       eyebrow="Your people"
@@ -107,7 +150,7 @@ export function ContactManager({
             autoCapitalize="none"
             className="text-input text-input--mono"
             onChange={(event) => setLookup(event.target.value)}
-            placeholder="npub1…"
+            placeholder="Paste a miZmo link or enter an email"
             spellCheck={false}
             value={lookup}
           />
@@ -127,6 +170,33 @@ export function ContactManager({
       )}
 
       <div className="contact-manager-list">
+        {emailContacts.length > 0 && (
+          <>
+            <p className="contact-manager-group-label">Email contacts</p>
+            {emailContacts.map((contact) => (
+              <div className="contact-manager-row" key={contact.email}>
+                <span className="contact-avatar contact-avatar--email">
+                  <Icon name="mail" size={18} />
+                </span>
+                <div className="contact-manager-copy">
+                  <p>{contact.email}</p>
+                  <span>Email contact</span>
+                </div>
+                <button
+                  aria-label={`Remove ${contact.email}`}
+                  className="icon-button contact-remove"
+                  onClick={() => handleRemoveEmail(contact.email)}
+                  type="button"
+                >
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+        {sorted.length > 0 && emailContacts.length > 0 && (
+          <p className="contact-manager-group-label">miZmo contacts</p>
+        )}
         {status === 'loading' ? (
           <p className="contact-manager-empty">Loading contacts…</p>
         ) : sorted.length > 0 ? (
@@ -144,9 +214,7 @@ export function ContactManager({
                 />
                 <div className="contact-manager-copy">
                   <p>{name}</p>
-                  <span title={nip19.npubEncode(pubkey)}>
-                    {shortenId(nip19.npubEncode(pubkey), 18, 12)}
-                  </span>
+                  <span>miZmo contact</span>
                 </div>
                 <button
                   aria-label={`Remove ${name}`}
@@ -160,11 +228,11 @@ export function ContactManager({
               </div>
             )
           })
-        ) : (
+        ) : emailContacts.length === 0 ? (
           <p className="contact-manager-empty">
-            No contacts yet. Add someone by their Nostr address.
+            No contacts yet. Add someone by their miZmo link or email.
           </p>
-        )}
+        ) : null}
       </div>
     </Modal>
   )

@@ -1,5 +1,3 @@
-import { nip19 } from 'nostr-tools'
-
 export function shortenId(id: string, start = 9, end = 7): string {
   if (id.length <= start + end + 1) return id
   return `${id.slice(0, start)}…${id.slice(-end)}`
@@ -47,8 +45,8 @@ export async function copyText(value: string): Promise<void> {
 }
 
 export function displayName(
-  pubkey: string,
+  _pubkey: string,
   profileName: string | undefined,
 ): string {
-  return profileName?.trim() || shortenId(nip19.npubEncode(pubkey), 10, 6)
+  return profileName?.trim() || 'Someone'
 }

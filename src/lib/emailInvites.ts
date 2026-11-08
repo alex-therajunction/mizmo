@@ -367,7 +367,7 @@ async function publishSentEmailInviteMetadata(
 
   await publishEvent(
     event,
-    'The email invitation was sent, but its pending marker could not sync.',
+    "The email invitation was sent, but your sent list couldn't finish updating.",
   )
 }
 
@@ -394,7 +394,7 @@ async function publishReceivedEmailInviteMetadata(
 
   await publishEvent(
     event,
-    'The mizmo was received, but it could not sync to your relays.',
+    "This ask was received, but couldn't finish updating.",
   )
 }
 
@@ -445,16 +445,16 @@ export function buildEmailInviteMailto(input: {
   inviterName: string
   link: string
 }): string {
-  const subject = `${input.inviterName} sent you a mizmo`
+  const subject = `${input.inviterName} sent you an ask on miZmo`
   const body = [
-    `${input.inviterName} sent you a mizmo on miZmo.me.`,
+    `${input.inviterName} sent you an ask on miZmo.me.`,
     '',
     'Open it here:',
     input.link,
     '',
-    'Opening the link will create or connect your local miZmo key, add the sender to your contacts, and put the mizmo in your mi inbox.',
+    'Opening the link will show you the ask and add the sender to your contacts.',
     '',
-    'miZmo is a small, encrypted reminder for an ask. No account, password, or app server is required.',
+    'miZmo is a simple way to ask someone to do something and keep track of it. No password or download is required.',
   ].join('\n')
 
   return `mailto:${encodeURIComponent(input.recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
@@ -511,7 +511,7 @@ export async function createEmailInvite(
 
   await publishEvent(
     event,
-    'No relay accepted the email invitation. Check your connection and try again.',
+    "We couldn't send that email invitation just now. Check your connection and try again.",
   )
 
   return { event, secretKey, inviteId }
@@ -558,7 +558,7 @@ export async function fetchEmailInviteEvent(
 
   if (!event) {
     throw new Error(
-      'This invitation was not found on the relays yet. Try again in a moment.',
+      "We couldn't find this invitation yet. Try again in a moment.",
     )
   }
 
@@ -568,7 +568,7 @@ export async function fetchEmailInviteEvent(
     !inviteIdFromEvent(event) ||
     !tagValue(event, 'p')
   ) {
-    throw new Error('This link does not contain a valid mizmo invitation.')
+    throw new Error("This link isn't a valid miZmo invitation.")
   }
 
   return event
@@ -588,7 +588,7 @@ export async function decryptEmailInvite(
   const invitePubkey = tagValue(event, 'p')
 
   if (!id || !invitePubkey) {
-    throw new Error('This invitation is missing its recipient details.')
+    throw new Error('This invitation is incomplete.')
   }
 
   const conversationKey = nip44.getConversationKey(secretKey, event.pubkey)
@@ -596,7 +596,7 @@ export async function decryptEmailInvite(
   const payload = JSON.parse(plaintext) as Partial<MizmoPayload>
 
   if (typeof payload.ask !== 'string' || !payload.ask.trim()) {
-    throw new Error('This invitation has no readable ask.')
+    throw new Error("This invitation doesn't include an ask.")
   }
 
   return {
@@ -832,7 +832,7 @@ async function publishEmailInviteClaim(
 ): Promise<void> {
   const inviteId = inviteIdFromEvent(event)
 
-  if (!inviteId) throw new Error('This invitation has no claim identifier.')
+  if (!inviteId) throw new Error('This invitation is incomplete.')
 
   const latest = await latestEvent({
     kinds: [MIZMO_KIND],
@@ -871,7 +871,7 @@ async function publishEmailInviteClaim(
 
   await publishEvent(
     claim,
-    'The mizmo was received, but the sender could not be notified.',
+    'The ask was received, but the sender could not be notified.',
   )
 }
 

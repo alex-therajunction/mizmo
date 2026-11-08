@@ -60,7 +60,13 @@ export function normalizeNostrId(value: string): string | null {
   let clean = ''
 
   try {
-    clean = decodeURIComponent(value).trim().replace(/^nostr:/i, '')
+    clean = decodeURIComponent(value).trim()
+
+    if (/^https?:\/\//i.test(clean)) {
+      clean = new URL(clean).pathname.split('/').filter(Boolean).pop() ?? ''
+    }
+
+    clean = clean.replace(/^nostr:/i, '')
   } catch {
     return null
   }
@@ -124,7 +130,7 @@ export function decryptMizmo(
     event.pubkey === ownPubkey ? recipientFromEvent(event) : event.pubkey
 
   if (!counterparty) {
-    throw new Error('The recipient is missing from this mizmo.')
+    throw new Error('This ask is missing a recipient.')
   }
 
   const conversationKey = nip44.getConversationKey(secretKey, counterparty)
@@ -132,7 +138,7 @@ export function decryptMizmo(
   const payload = JSON.parse(plaintext) as Partial<MizmoPayload>
 
   if (typeof payload.ask !== 'string' || !payload.ask.trim()) {
-    throw new Error('This mizmo has no readable ask.')
+    throw new Error("This ask can't be opened.")
   }
 
   return {
@@ -181,7 +187,7 @@ export async function sendMizmo(
 
   await publishEvent(
     event,
-    'No relay accepted the mizmo. Check your connection and try again.',
+    "We couldn't send that just now. Check your connection and try again.",
   )
 
   return event
@@ -322,7 +328,7 @@ export async function publishProfile(
 
   await publishEvent(
     event,
-    'No relay accepted your profile. Check your connection and try again.',
+    "We couldn't save your profile. Check your connection and try again.",
   )
 
   return profileFromContent(content)
@@ -397,8 +403,8 @@ export async function updateContacts(
   await publishEvent(
     event,
     action === 'add'
-      ? 'No relay accepted the contact update.'
-      : 'No relay accepted the contact removal.',
+      ? "We couldn't add that contact just now. Check your connection and try again."
+      : "We couldn't remove that contact just now. Check your connection and try again.",
   )
 
   return contactPubkeys(event)
@@ -458,6 +464,6 @@ export async function publishRankings(
 
   await publishEvent(
     event,
-    'Your order is saved on this device, but no relay accepted the sync.',
+    "Your changes are saved on this device, but couldn't be updated everywhere.",
   )
 }

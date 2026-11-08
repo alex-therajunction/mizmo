@@ -43,10 +43,10 @@ function App() {
       </AppShell>
 
       <Modal
-        eyebrow="Your keys, your browser"
+        eyebrow="Welcome to miZmo"
         onClose={() => setAuthOpen(false)}
         open={authOpen}
-        title="Sign in to miZmo"
+        title="Sign in or create an account"
       >
         <AuthPanel
           compact
