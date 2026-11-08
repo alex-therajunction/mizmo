@@ -11,7 +11,7 @@ ask, with an optional deadline.
   removed, and used to filter both boxes.
 - Inbox order and per-contact outbox order are private, synced app data.
 - Keys are generated or imported in the browser and stored in `localStorage`.
-  Settings can also create an encrypted NIP-49 backup and open a pre-filled
+  Settings can also create an encrypted NIP-49 login link and open a pre-filled
   email draft for saving it.
 - A mizmo can be sent by email to someone without a key yet. The email opens
   the default mail client with a signup link; accepting it adds the inviter as
@@ -70,12 +70,12 @@ can sign and decrypt after a reload. Anyone with access to the browser profile
 can use it. Users can reveal/copy their `nsec` in settings, but signing out or
 clearing site data without a backup loses the identity.
 
-The **Encrypted email backup** action encrypts the key with NIP-49 in the
-browser and opens the default mail client with an import link. The backup
-password is not included in the email, so store it separately. Opening the link
+The **Email login link** action encrypts the key with NIP-49 in the browser and
+opens the default mail client with an import link. The user chooses a password
+once; it is not included in the email, so store it separately. Opening the link
 at `/import` prompts for the password, decrypts the key locally, and imports it.
-The encrypted key is carried in the URL fragment so it is not sent to the
-static host.
+The encrypted key is carried in the URL fragment so it is not sent to the static
+host.
 
 Profile metadata and contact-list events are public, as required by Nostr.
 Mizmo asks and private ranking data are encrypted. Some relays may reject large

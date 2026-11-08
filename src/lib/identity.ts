@@ -6,7 +6,7 @@ import {
 import { bytesToHex, hexToBytes } from './encoding'
 
 const STORAGE_KEY = 'mizmo.identity.v1'
-export const MIN_BACKUP_PASSWORD_LENGTH = 12
+export const MIN_BACKUP_PASSWORD_LENGTH = 8
 
 type StoredIdentity = {
   version: 1

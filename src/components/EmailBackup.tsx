@@ -12,8 +12,8 @@ import {
 import { Icon } from './Icon'
 
 export function EmailBackup({ identity }: { identity: Identity }) {
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
   const [password, setPassword] = useState('')
-  const [confirmation, setConfirmation] = useState('')
   const [backup, setBackup] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,20 +23,10 @@ export function EmailBackup({ identity }: { identity: Identity }) {
     event.preventDefault()
     setError('')
 
-    if (password !== password.trim()) {
-      setError('The backup password cannot start or end with a space.')
-      return
-    }
-
     if (password.length < MIN_BACKUP_PASSWORD_LENGTH) {
       setError(
-        `Use at least ${MIN_BACKUP_PASSWORD_LENGTH} characters for this backup password.`,
+        `Use at least ${MIN_BACKUP_PASSWORD_LENGTH} characters.`,
       )
-      return
-    }
-
-    if (password !== confirmation) {
-      setError('The backup passwords do not match.')
       return
     }
 
@@ -46,7 +36,6 @@ export function EmailBackup({ identity }: { identity: Identity }) {
       const encrypted = encryptIdentityBackup(identity, password)
       setBackup(encrypted)
       setPassword('')
-      setConfirmation('')
       window.location.href = buildBackupEmailUrl(encrypted, identity.npub)
     } catch {
       setError('The encrypted backup could not be created.')
@@ -71,9 +60,10 @@ export function EmailBackup({ identity }: { identity: Identity }) {
     <div className="email-backup">
       <div className="settings-heading">
         <div>
-          <p className="settings-label">Encrypted email backup</p>
+          <p className="settings-label">Email login link</p>
           <p className="microcopy">
-            Email yourself an encrypted copy and unlock it on another device.
+            Sign in on another device with an encrypted link sent to your
+            email.
           </p>
         </div>
       </div>
@@ -81,11 +71,11 @@ export function EmailBackup({ identity }: { identity: Identity }) {
       {backup ? (
         <div className="backup-result">
           <p aria-live="polite" className="form-success">
-            Encrypted backup ready.
+            Login link ready.
           </p>
           <p className="microcopy">
             Your email app should have opened. If it did not, open it from here
-            or copy the backup link and email it to yourself.
+            or copy the login link.
           </p>
           <div className="button-row">
             <a
@@ -101,20 +91,35 @@ export function EmailBackup({ identity }: { identity: Identity }) {
               type="button"
             >
               <Icon name={copied ? 'check' : 'copy'} size={16} />
-              {copied ? 'Copied' : 'Copy backup link'}
+              {copied ? 'Copied' : 'Copy login link'}
             </button>
           </div>
           <p className="warning-copy">
-            The backup password is not included in the email and cannot be
-            recovered. Store it in a password manager; you will need it to
-            import the key.
+            The password is not included in the email and cannot be recovered.
+            Store it in a password manager; you will need it to use the link.
+          </p>
+        </div>
+      ) : !showPasswordPrompt ? (
+        <div className="backup-form">
+          <button
+            className="button button--secondary button--small"
+            onClick={() => setShowPasswordPrompt(true)}
+            type="button"
+          >
+            <Icon name="mail" size={16} />
+            Email me a login link
+          </button>
+          <p className="microcopy">
+            You will choose a password once. The password stays out of the
+            email and is required when you open the link.
           </p>
         </div>
       ) : (
         <form className="backup-form" onSubmit={handleSubmit}>
           <label className="field">
-            <span className="field-label">Backup password</span>
+            <span className="field-label">Choose a password</span>
             <input
+              autoFocus
               autoComplete="new-password"
               className="text-input"
               onChange={(event) => {
@@ -126,20 +131,6 @@ export function EmailBackup({ identity }: { identity: Identity }) {
               value={password}
             />
           </label>
-          <label className="field">
-            <span className="field-label">Confirm backup password</span>
-            <input
-              autoComplete="new-password"
-              className="text-input"
-              onChange={(event) => {
-                setConfirmation(event.target.value)
-                setError('')
-              }}
-              placeholder="Repeat the password"
-              type="password"
-              value={confirmation}
-            />
-          </label>
           {error && <p className="form-error">{error}</p>}
           <button
             className="button button--secondary button--small"
@@ -147,12 +138,11 @@ export function EmailBackup({ identity }: { identity: Identity }) {
             type="submit"
           >
             <Icon name="send" size={16} />
-            {busy ? 'Encrypting…' : 'Encrypt & open email'}
+            {busy ? 'Creating link…' : 'Send login link'}
           </button>
           <p className="microcopy">
-            Uses NIP-49 encryption in this browser. Your email app will open
-            with a draft; add your address and send it. Store the password
-            separately.
+            Your email app will open with a draft. Add your address and send
+            it, then store the password safely.
           </p>
         </form>
       )}

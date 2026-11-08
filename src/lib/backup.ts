@@ -19,14 +19,14 @@ export function buildBackupEmailUrl(
   npub: string,
 ): string {
   const importUrl = buildBackupImportUrl(ncryptsec)
-  const subject = 'miZmo encrypted key backup'
+  const subject = 'Your miZmo login link'
   const body = [
-    'Encrypted miZmo key backup',
+    'Your miZmo login link',
     '',
-    'Open this link to import the key:',
+    'Open this link to sign in and import your key:',
     importUrl,
     '',
-    'You will need the password chosen when this backup was created.',
+    'You will need the password you chose when creating this link.',
     'The password is NOT included in this email, so keep it somewhere safe.',
     '',
     'If the link does not work, open:',
@@ -38,7 +38,7 @@ export function buildBackupEmailUrl(
     '',
     `miZmo address: ${npub}`,
     '',
-    'Anyone with this backup and password can act as you. If you did not create this backup, delete this email.',
+    'Anyone with this link and password can act as you. If you did not create this login link, delete this email.',
   ].join('\n')
 
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
