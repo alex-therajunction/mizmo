@@ -54,9 +54,21 @@ export function useSentEmailInvites(identity: Identity | null) {
         const metadataById = new Map(
           metadata.map((invite) => [invite.id, invite]),
         )
-        const invitePubkeys = new Map(
-          invites.map((invite) => [invite.id, invite.invitePubkey]),
+        const invitesById = new Map(
+          invites.map((invite) => [invite.id, invite]),
         )
+        const invitePubkeys = new Map<string, string>()
+
+        for (const invite of invites) {
+          invitePubkeys.set(invite.id, invite.invitePubkey)
+        }
+
+        for (const invite of metadata) {
+          if (invite.invitePubkey && !invitePubkeys.has(invite.id)) {
+            invitePubkeys.set(invite.id, invite.invitePubkey)
+          }
+        }
+
         const claims = claimEvents
           .map((event) => decodeEmailInviteClaim(event, identity, invitePubkeys))
           .filter((claim): claim is EmailInviteClaim => claim !== null)
@@ -69,20 +81,36 @@ export function useSentEmailInvites(identity: Identity | null) {
           }
         }
 
-        const records = invites.map((invite) => {
-          const claim = claimByInvite.get(invite.id)
+        const recordIds = new Set([
+          ...metadata.map((invite) => invite.id),
+          ...invites.map((invite) => invite.id),
+        ])
+        const records: SentEmailInvite[] = []
 
-          return {
-            id: invite.id,
-            eventId: invite.eventId,
-            email: metadataById.get(invite.id)?.email ?? '',
-            ask: invite.ask,
-            deadline: invite.deadline,
-            createdAt: invite.createdAt,
+        for (const id of recordIds) {
+          const meta = metadataById.get(id)
+          const invite = invitesById.get(id)
+          const eventId = invite?.eventId ?? meta?.eventId
+          const ask = invite?.ask ?? meta?.ask
+          const createdAt = invite?.createdAt ?? meta?.createdAt
+          const claim = claimByInvite.get(id)
+
+          if (!eventId || !ask || createdAt === undefined) continue
+
+          records.push({
+            id,
+            eventId,
+            email: meta?.email ?? '',
+            ask,
+            deadline: invite?.deadline ?? meta?.deadline ?? null,
+            createdAt,
             status: claim ? ('accepted' as const) : ('pending' as const),
             recipient: claim?.recipient ?? null,
-          }
-        })
+            acceptedAt: claim?.acceptedAt ?? null,
+          })
+        }
+
+        records.sort((a, b) => b.createdAt - a.createdAt)
 
         setState({
           identityKey: identity.pubkey,
@@ -119,6 +147,7 @@ export function useSentEmailInvites(identity: Identity | null) {
                               ...invite,
                               status: 'accepted',
                               recipient: claim.recipient,
+                              acceptedAt: claim.acceptedAt,
                             }
                           : invite,
                       ),
@@ -146,6 +175,18 @@ export function useSentEmailInvites(identity: Identity | null) {
       claimSubscription?.close()
     }
   }, [identity, reloadToken])
+
+  useEffect(() => {
+    const refreshOnReturn = () => setReloadToken((value) => value + 1)
+
+    window.addEventListener('focus', refreshOnReturn)
+    window.addEventListener('online', refreshOnReturn)
+
+    return () => {
+      window.removeEventListener('focus', refreshOnReturn)
+      window.removeEventListener('online', refreshOnReturn)
+    }
+  }, [])
 
   const current =
     identity && state.identityKey === identity.pubkey

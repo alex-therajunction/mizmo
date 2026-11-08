@@ -85,6 +85,9 @@ export function EmailInviteModal({
         eventId: invite.event.id,
         email: cleanEmail,
         createdAt: invite.event.created_at * 1000,
+        ask: cleanAsk,
+        deadline: deadlineTime,
+        invitePubkey: invite.invitePubkey,
       })
 
       setResult({
@@ -166,8 +169,8 @@ export function EmailInviteModal({
             </button>
           </div>
           <p className="microcopy">
-            Opening the link shows them your ask and adds you to their
-            contacts. No password needed.
+            This invite is now in your sent asks. Opening the link shows them
+            your ask and adds you to their contacts. No password needed.
           </p>
         </div>
       </Modal>

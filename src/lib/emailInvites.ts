@@ -49,6 +49,9 @@ export type SentEmailInviteMeta = {
   eventId: string
   email: string
   createdAt: number
+  ask?: string
+  deadline?: number | null
+  invitePubkey?: string
 }
 
 export type SentEmailInvite = {
@@ -60,6 +63,7 @@ export type SentEmailInvite = {
   createdAt: number
   status: 'pending' | 'accepted'
   recipient: string | null
+  acceptedAt: number | null
 }
 
 export type ReceivedEmailInvite = {
@@ -137,12 +141,29 @@ function validSentMeta(value: unknown): SentEmailInviteMeta | null {
     return null
   }
 
-  return {
+  const invite: SentEmailInviteMeta = {
     id: item.id,
     eventId: item.eventId,
     email: item.email,
     createdAt: item.createdAt,
   }
+
+  if (typeof item.ask === 'string' && item.ask.trim()) {
+    invite.ask = item.ask
+  }
+
+  if (item.deadline === null || typeof item.deadline === 'number') {
+    invite.deadline = item.deadline
+  }
+
+  if (
+    typeof item.invitePubkey === 'string' &&
+    /^[0-9a-f]{64}$/i.test(item.invitePubkey)
+  ) {
+    invite.invitePubkey = item.invitePubkey.toLowerCase()
+  }
+
+  return invite
 }
 
 function parseSentMetadata(value: unknown): SentEmailInviteMetadata | null {
@@ -226,7 +247,28 @@ function mergeSentMetadata(
   const byId = new Map<string, SentEmailInviteMeta>()
 
   for (const invite of first.invites) byId.set(invite.id, invite)
-  for (const invite of second.invites) byId.set(invite.id, invite)
+
+  for (const invite of second.invites) {
+    const current = byId.get(invite.id)
+
+    byId.set(
+      invite.id,
+      current
+        ? {
+            id: invite.id,
+            eventId: invite.eventId || current.eventId,
+            email: invite.email || current.email,
+            createdAt: invite.createdAt || current.createdAt,
+            ask: invite.ask ?? current.ask,
+            deadline:
+              invite.deadline !== undefined
+                ? invite.deadline
+                : current.deadline,
+            invitePubkey: invite.invitePubkey ?? current.invitePubkey,
+          }
+        : invite,
+    )
+  }
 
   return {
     version: 1,
@@ -463,7 +505,12 @@ export function buildEmailInviteMailto(input: {
 export async function createEmailInvite(
   identity: Identity,
   input: EmailInviteInput,
-): Promise<{ event: Event; secretKey: Uint8Array; inviteId: string }> {
+): Promise<{
+  event: Event
+  secretKey: Uint8Array
+  inviteId: string
+  invitePubkey: string
+}> {
   const ask = input.ask.trim()
   const email = input.recipientEmail.trim()
 
@@ -514,7 +561,7 @@ export async function createEmailInvite(
     "We couldn't send that email invitation just now. Check your connection and try again.",
   )
 
-  return { event, secretKey, inviteId }
+  return { event, secretKey, inviteId, invitePubkey }
 }
 
 export async function rememberSentEmailInvite(
@@ -620,16 +667,22 @@ export async function fetchSentEmailInvites(
     createdAt: number
   }>
 > {
-  const events = await pool.querySync(
-    [...RELAYS],
-    {
-      kinds: [MIZMO_KIND],
-      authors: [identity.pubkey],
-      '#t': [EMAIL_INVITE_TAG],
-      limit: 300,
-    },
-    { maxWait: QUERY_WAIT },
-  )
+  let events: Event[]
+
+  try {
+    events = await pool.querySync(
+      [...RELAYS],
+      {
+        kinds: [MIZMO_KIND],
+        authors: [identity.pubkey],
+        limit: 300,
+      },
+      { maxWait: QUERY_WAIT },
+    )
+  } catch {
+    return []
+  }
+
   const seen = new Set<string>()
   const invites: Array<{
     id: string
@@ -643,6 +696,8 @@ export async function fetchSentEmailInvites(
   for (const event of events) {
     if (seen.has(event.id)) continue
     seen.add(event.id)
+
+    if (tagValue(event, 't') !== EMAIL_INVITE_TAG) continue
 
     const invitePubkey = tagValue(event, 'p')
     const id = inviteIdFromEvent(event)

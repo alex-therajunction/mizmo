@@ -716,6 +716,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                   invites={visibleSentEmailInvites}
                   now={now}
                   onArchive={archiveRecord}
+                  onRefresh={refreshSentEmailInvites}
                   profiles={profiles}
                 />
               )}
@@ -872,6 +873,7 @@ function EmailInvitesOutbox({
   profiles,
   onArchive,
   onRestore,
+  onRefresh,
   title = 'Email invitations',
 }: {
   invites: SentEmailInvite[]
@@ -879,6 +881,7 @@ function EmailInvitesOutbox({
   profiles: Record<string, ProfileData | null>
   onArchive?: (eventId: string) => void
   onRestore?: (eventId: string) => void
+  onRefresh?: () => void
   title?: string
 }) {
   const pending = invites.filter((invite) => invite.status === 'pending').length
@@ -894,10 +897,22 @@ function EmailInvitesOutbox({
             <strong>{title}</strong>
             <small>
               {invites.length} {invites.length === 1 ? 'invite' : 'invites'}
-              {pending > 0 ? ` · ${pending} waiting to join` : ' · all accepted'}
+              {pending > 0
+                ? ` · ${pending} waiting to open`
+                : ' · all accepted'}
             </small>
           </span>
         </span>
+        {onRefresh && (
+          <button
+            className="text-button email-outbox-refresh"
+            onClick={onRefresh}
+            type="button"
+          >
+            <Icon name="restore" size={14} />
+            Check status
+          </button>
+        )}
       </div>
       <div className="outbox-group-list">
         {invites.map((invite) => (
@@ -939,6 +954,10 @@ function EmailInviteCard({
       )
     : invite.email || 'Invitation link'
   const overdue = invite.deadline !== null && invite.deadline < now
+  const acceptedNote =
+    invite.acceptedAt !== null
+      ? `Request received · ${formatEventTime(invite.acceptedAt)}`
+      : 'Request received'
 
   return (
     <article
@@ -962,12 +981,23 @@ function EmailInviteCard({
               accepted ? 'is-accepted' : 'is-pending'
             }`}
           >
-            {accepted ? 'accepted' : 'waiting to join'}
+            {accepted ? 'accepted' : 'waiting to open'}
           </span>
         </div>
       </div>
 
       <p className="mizmo-ask">{invite.ask}</p>
+
+      <p
+        className={`email-invite-state ${
+          accepted ? 'is-accepted' : 'is-pending'
+        }`}
+      >
+        <Icon name={accepted ? 'check' : 'clock'} size={13} />
+        {accepted
+          ? `${acceptedNote} · the ask is in their inbox.`
+          : 'Waiting for them to open the link and accept.'}
+      </p>
 
       <div className="mizmo-card-bottom">
         {accepted && invite.recipient ? (

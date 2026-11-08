@@ -124,9 +124,13 @@ export function MoComposer({
           eventId: invite.event.id,
           email: emailTarget,
           createdAt: invite.event.created_at * 1000,
+          ask: cleanAsk,
+          deadline: deadlineTime,
+          invitePubkey: invite.invitePubkey,
         })
 
         onAddEmailContact(emailTarget)
+        onEmailSent()
         setNotice({
           kind: 'email',
           email: emailTarget,
@@ -146,7 +150,6 @@ export function MoComposer({
             ? { ...current, metadataSynced }
             : current,
         )
-        onEmailSent()
         return
       }
 
@@ -317,7 +320,7 @@ export function MoComposer({
             <>
               <p>
                 <Icon name="mail" size={16} /> Email draft opened for{' '}
-                {notice.email}.
+                {notice.email}. It&apos;s now in your sent asks.
               </p>
               {!notice.metadataSynced && (
                 <p className="form-error">
@@ -342,6 +345,9 @@ export function MoComposer({
                   {copied ? 'Copied' : 'Copy invite link'}
                 </button>
               </div>
+              <p className="microcopy">
+                We&apos;ll mark it accepted as soon as they open the link.
+              </p>
             </>
           )}
         </div>
