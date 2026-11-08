@@ -1517,6 +1517,16 @@ code {
   border-color: var(--line-strong);
 }
 
+.card-action--danger {
+  color: var(--danger);
+}
+
+.card-action--danger:hover {
+  color: var(--danger);
+  background: var(--paper-card);
+  border-color: var(--danger);
+}
+
 .mizmo-contact {
   display: inline-flex;
   min-width: 0;
@@ -2007,6 +2017,45 @@ code {
   color: var(--danger);
 }
 
+.contact-rename {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.contact-name-form {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-name-form .text-input {
+  width: auto;
+  min-width: 140px;
+  height: 38px;
+  flex: 1;
+  padding: 0 11px;
+  border-radius: 11px;
+  font-size: 0.82rem;
+}
+
+.contact-name-form .button {
+  flex: 0 0 auto;
+}
+
+.contact-name-cancel {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+}
+
+.contact-name-form .form-error {
+  flex-basis: 100%;
+}
+
 .contact-manager-empty {
   padding: 24px 14px;
   color: var(--muted);
@@ -2390,6 +2439,18 @@ code {
 
 .email-invite-recipient {
   cursor: default;
+}
+
+.email-invite-name-form {
+  margin: 0 0 15px;
+  padding: 12px;
+  background: var(--paper-deep);
+  border-radius: 14px;
+}
+
+.email-invite-name-form .field {
+  min-width: 180px;
+  flex: 1;
 }
 
 .join-page {

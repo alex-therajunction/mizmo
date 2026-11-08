@@ -9,6 +9,7 @@ export type IconName =
   | 'clock'
   | 'close'
   | 'copy'
+  | 'edit'
   | 'grip'
   | 'inbox'
   | 'key'
@@ -46,6 +47,12 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <rect x="8" y="8" width="11" height="11" rx="2" />
       <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+      <path d="m14 8 3 3" />
     </>
   ),
   grip: (

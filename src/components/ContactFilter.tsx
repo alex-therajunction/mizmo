@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { displayName } from '../lib/format'
+import { displayContactName } from '../lib/format'
 import type { ProfileData } from '../lib/nostr'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 
 type ContactFilterProps = {
   contacts: string[]
+  contactNames: Record<string, string>
   profiles: Record<string, ProfileData | null>
   selected: string | null
   loading: boolean
@@ -15,6 +16,7 @@ type ContactFilterProps = {
 
 export function ContactFilter({
   contacts,
+  contactNames,
   profiles,
   selected,
   loading,
@@ -24,9 +26,11 @@ export function ContactFilter({
   const sorted = useMemo(
     () =>
       [...contacts].sort((a, b) =>
-        contactName(a, profiles).localeCompare(contactName(b, profiles)),
+        contactName(a, profiles, contactNames).localeCompare(
+          contactName(b, profiles, contactNames),
+        ),
       ),
-    [contacts, profiles],
+    [contactNames, contacts, profiles],
   )
 
   return (
@@ -49,7 +53,7 @@ export function ContactFilter({
         </button>
         {sorted.map((pubkey) => {
           const profile = profiles[pubkey]
-          const name = contactName(pubkey, profiles)
+          const name = contactName(pubkey, profiles, contactNames)
 
           return (
             <button
@@ -83,7 +87,12 @@ export function ContactFilter({
 function contactName(
   pubkey: string,
   profiles: Record<string, ProfileData | null>,
+  contactNames: Record<string, string>,
 ): string {
   const profile = profiles[pubkey]
-  return displayName(pubkey, profile?.displayName || profile?.name)
+  return displayContactName(
+    pubkey,
+    profile?.displayName || profile?.name,
+    contactNames[pubkey],
+  )
 }

@@ -2,7 +2,11 @@ import { useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { nip19 } from 'nostr-tools'
 import type { MizmoRecord } from '../hooks/useMizmos'
-import { displayName, formatDeadline, formatEventTime } from '../lib/format'
+import {
+  displayContactName,
+  formatDeadline,
+  formatEventTime,
+} from '../lib/format'
 import type { ProfileData } from '../lib/nostr'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
@@ -19,26 +23,31 @@ type MizmoCardProps = {
   record: MizmoRecord
   now: number
   profile?: ProfileData | null
+  contactName?: string
   reorder?: ReorderControls
-  onArchive?: () => void
+  onDone?: () => void
   onRestore?: () => void
+  onDelete?: () => void
 }
 
 export function MizmoCard({
   record,
   now,
   profile,
+  contactName: petname,
   reorder,
-  onArchive,
+  onDone,
   onRestore,
+  onDelete,
 }: MizmoCardProps) {
   const [dragging, setDragging] = useState(false)
   const overdue = record.deadline !== null && record.deadline < now
   const counterpartyNpub = nip19.npubEncode(record.counterparty)
   const directionLabel = record.direction === 'in' ? 'From' : 'To'
-  const contactName = displayName(
+  const contactName = displayContactName(
     record.counterparty,
     profile?.displayName || profile?.name,
+    petname,
   )
 
   const handleDragStart = (event: DragEvent<HTMLElement>) => {
@@ -153,14 +162,14 @@ export function MizmoCard({
               No deadline
             </span>
           )}
-          {onArchive && (
+          {onDone && (
             <button
               className="card-action"
-              onClick={onArchive}
+              onClick={onDone}
               type="button"
             >
-              <Icon name="archive" size={14} />
-              Archive
+              <Icon name="check" size={14} />
+              Mark done
             </button>
           )}
           {onRestore && (
@@ -171,6 +180,16 @@ export function MizmoCard({
             >
               <Icon name="restore" size={14} />
               Restore
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="card-action card-action--danger"
+              onClick={onDelete}
+              type="button"
+            >
+              <Icon name="trash" size={14} />
+              Delete
             </button>
           )}
         </div>

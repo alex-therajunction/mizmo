@@ -8,9 +8,12 @@ in one calm place. Just enter their email — miZmo takes care of the rest.
 - Open your personal miZmo link to see **mi** (asks people send you) and **mo**
   (asks you send).
 - Add a contact by email or with their miZmo link.
+- Name contacts after they join, and have accepted email invitees added
+  to your contacts automatically.
 - Write an ask in **mo**, choose a contact or enter an email address, and add a
   deadline if you need one.
-- Archive asks you are done with, then restore them from the **archive** tab.
+- Mark asks as done to archive them, restore them from the **archive** tab, or
+  delete them from your lists.
 - Sign in on another device with your recovery code or an email login link.
 - Save a backup of your account so you can get back in later.
 
@@ -59,12 +62,15 @@ recipient and deadline tags are public relay metadata.
   `picture`. Pictures are center-cropped and resized in the browser, then
   embedded as a data URL. Other metadata fields are preserved when editing.
 - **Contacts:** NIP-02 kind `3` contact list. The app preserves existing `p`
-  tags, relay hints, and petnames. Successful sends add new recipients.
+  tags, relay hints, and petnames. Successful sends add new recipients, and
+  accepted email invitations add the new contact automatically. Petnames are
+  saved in the NIP-02 `p` tag so they sync across devices.
 - **Order and archive:** kind `30078` app data with `d=mizmo.me/rankings`, encrypted
   NIP-44 to the user's own key. Its payload is
-  `{ version: 1, updatedAt, inbox: string[], outbox: { [pubkey]: string[] }, archived: string[] }`.
+  `{ version: 1, updatedAt, inbox: string[], outbox: { [pubkey]: string[] }, archived: string[], deleted: string[] }`.
   The browser also keeps a local copy so ordering and archives survive relay
-  failures.
+  failures. Deleted ids stay hidden even if the original relay event is still
+  available.
 
 ## Keys and privacy
 

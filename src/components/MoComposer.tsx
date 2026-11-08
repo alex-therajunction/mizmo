@@ -10,7 +10,11 @@ import {
   createEmailInvite,
   rememberSentEmailInvite,
 } from '../lib/emailInvites'
-import { copyText, displayName, toDateTimeLocalValue } from '../lib/format'
+import {
+  copyText,
+  displayContactName,
+  toDateTimeLocalValue,
+} from '../lib/format'
 import type { Identity } from '../lib/identity'
 import { sendMizmo, type ProfileData } from '../lib/nostr'
 import { Icon } from './Icon'
@@ -18,6 +22,7 @@ import { Icon } from './Icon'
 type MoComposerProps = {
   identity: Identity
   contacts: string[]
+  contactNames: Record<string, string>
   emailContacts: EmailContact[]
   profiles: Record<string, ProfileData | null>
   inviterName: string
@@ -39,6 +44,7 @@ type SendNotice =
 export function MoComposer({
   identity,
   contacts,
+  contactNames,
   emailContacts,
   profiles,
   inviterName,
@@ -58,9 +64,11 @@ export function MoComposer({
   const sortedContacts = useMemo(
     () =>
       [...contacts].sort((a, b) =>
-        contactName(a, profiles).localeCompare(contactName(b, profiles)),
+        contactName(a, profiles, contactNames).localeCompare(
+          contactName(b, profiles, contactNames),
+        ),
       ),
-    [contacts, profiles],
+    [contactNames, contacts, profiles],
   )
   const sendsByEmail =
     Boolean(email.trim()) || selectedRecipient.startsWith('email:')
@@ -164,7 +172,7 @@ export function MoComposer({
       )
       setNotice({
         kind: 'contact',
-        name: contactName(recipient, profiles),
+        name: contactName(recipient, profiles, contactNames),
       })
       setAsk('')
       setDeadline('')
@@ -241,7 +249,7 @@ export function MoComposer({
                 <optgroup label="My contacts">
                   {sortedContacts.map((pubkey) => (
                     <option key={pubkey} value={`nostr:${pubkey}`}>
-                      {contactName(pubkey, profiles)}
+                      {contactName(pubkey, profiles, contactNames)}
                     </option>
                   ))}
                 </optgroup>
@@ -359,7 +367,12 @@ export function MoComposer({
 function contactName(
   pubkey: string,
   profiles: Record<string, ProfileData | null>,
+  contactNames: Record<string, string>,
 ): string {
   const profile = profiles[pubkey]
-  return displayName(pubkey, profile?.displayName || profile?.name)
+  return displayContactName(
+    pubkey,
+    profile?.displayName || profile?.name,
+    contactNames[pubkey],
+  )
 }

@@ -5,7 +5,7 @@ import {
   type EmailContact,
 } from '../hooks/useEmailContacts'
 import { useProfiles } from '../hooks/useProfiles'
-import { displayName } from '../lib/format'
+import { displayContactName } from '../lib/format'
 import type { Identity } from '../lib/identity'
 import { normalizeNostrId, type ProfileData } from '../lib/nostr'
 import { Avatar } from './Avatar'
@@ -15,11 +15,13 @@ import { Modal } from './Modal'
 type ContactManagerProps = {
   identity: Identity
   contacts: string[]
+  contactNames: Record<string, string>
   emailContacts: EmailContact[]
   status: 'idle' | 'loading' | 'ready' | 'error'
   loadError: string
   onAdd: (pubkey: string) => Promise<void>
   onAddEmail: (email: string) => void | Promise<void>
+  onRename: (pubkey: string, name: string) => Promise<void>
   onRemove: (pubkey: string) => Promise<void>
   onRemoveEmail: (email: string) => void
   onClose: () => void
@@ -28,11 +30,13 @@ type ContactManagerProps = {
 export function ContactManager({
   identity,
   contacts,
+  contactNames,
   emailContacts,
   status,
   loadError,
   onAdd,
   onAddEmail,
+  onRename,
   onRemove,
   onRemoveEmail,
   onClose,
@@ -41,12 +45,17 @@ export function ContactManager({
   const [lookup, setLookup] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameBusy, setNameBusy] = useState(false)
   const sorted = useMemo(
     () =>
       [...contacts].sort((a, b) =>
-        contactName(a, profiles).localeCompare(contactName(b, profiles)),
+        contactName(a, profiles, contactNames).localeCompare(
+          contactName(b, profiles, contactNames),
+        ),
       ),
-    [contacts, profiles],
+    [contactNames, contacts, profiles],
   )
 
   const handleAdd = async (event: FormEvent) => {
@@ -135,6 +144,35 @@ export function ContactManager({
     onRemoveEmail(email)
   }
 
+  const beginRename = (pubkey: string) => {
+    setError('')
+    setEditing(pubkey)
+    setNameDraft(contactNames[pubkey] ?? '')
+  }
+
+  const handleRename = async (event: FormEvent) => {
+    event.preventDefault()
+
+    if (!editing) return
+
+    setError('')
+    setNameBusy(true)
+
+    try {
+      await onRename(editing, nameDraft)
+      setEditing(null)
+      setNameDraft('')
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'That contact name could not be saved.',
+      )
+    } finally {
+      setNameBusy(false)
+    }
+  }
+
   return (
     <Modal
       eyebrow="Your people"
@@ -202,7 +240,8 @@ export function ContactManager({
         ) : sorted.length > 0 ? (
           sorted.map((pubkey) => {
             const profile = profiles[pubkey]
-            const name = contactName(pubkey, profiles)
+            const name = contactName(pubkey, profiles, contactNames)
+            const petname = contactNames[pubkey] ?? ''
 
             return (
               <div className="contact-manager-row" key={pubkey}>
@@ -212,19 +251,61 @@ export function ContactManager({
                   pubkey={pubkey}
                   size={42}
                 />
-                <div className="contact-manager-copy">
-                  <p>{name}</p>
-                  <span>miZmo contact</span>
-                </div>
-                <button
-                  aria-label={`Remove ${name}`}
-                  className="icon-button contact-remove"
-                  disabled={busy === pubkey}
-                  onClick={() => handleRemove(pubkey)}
-                  type="button"
-                >
-                  <Icon name="trash" size={18} />
-                </button>
+                {editing === pubkey ? (
+                  <form className="contact-name-form" onSubmit={handleRename}>
+                    <input
+                      aria-label={`Name for ${name}`}
+                      autoFocus
+                      className="text-input"
+                      maxLength={100}
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      placeholder={name}
+                      value={nameDraft}
+                    />
+                    <button
+                      className="button button--primary button--small"
+                      disabled={nameBusy}
+                      type="submit"
+                    >
+                      {nameBusy ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      className="text-button contact-name-cancel"
+                      onClick={() => {
+                        setEditing(null)
+                        setNameDraft('')
+                      }}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <div className="contact-manager-copy">
+                      <p>{name}</p>
+                      <span>{petname ? 'Your name for them' : 'miZmo contact'}</span>
+                    </div>
+                    <button
+                      aria-label={`Name ${name}`}
+                      className="icon-button contact-rename"
+                      onClick={() => beginRename(pubkey)}
+                      title={petname ? 'Change contact name' : 'Name this contact'}
+                      type="button"
+                    >
+                      <Icon name="edit" size={17} />
+                    </button>
+                    <button
+                      aria-label={`Remove ${name}`}
+                      className="icon-button contact-remove"
+                      disabled={busy === pubkey}
+                      onClick={() => handleRemove(pubkey)}
+                      type="button"
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </>
+                )}
               </div>
             )
           })
@@ -241,7 +322,12 @@ export function ContactManager({
 function contactName(
   pubkey: string,
   profiles: Record<string, ProfileData | null>,
+  contactNames: Record<string, string>,
 ): string {
   const profile = profiles[pubkey]
-  return displayName(pubkey, profile?.displayName || profile?.name)
+  return displayContactName(
+    pubkey,
+    profile?.displayName || profile?.name,
+    contactNames[pubkey],
+  )
 }

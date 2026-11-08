@@ -52,6 +52,11 @@ export type ProfileUpdate = {
   picture?: string | null
 }
 
+export type ContactEntry = {
+  pubkey: string
+  petname: string
+}
+
 export function tagValue(event: Event, name: string): string | undefined {
   return event.tags.find((tag) => tag[0] === name)?.[1]
 }
@@ -334,38 +339,51 @@ export async function publishProfile(
   return profileFromContent(content)
 }
 
-function contactPubkeys(event: Event | null): string[] {
+function contactEntries(event: Event | null): ContactEntry[] {
   if (!event) return []
 
-  return Array.from(
-    new Set(
-      event.tags
-        .filter(
-          (tag) =>
-            tag[0] === 'p' &&
-            typeof tag[1] === 'string' &&
-            /^[0-9a-f]{64}$/i.test(tag[1]),
-        )
-        .map((tag) => tag[1].toLowerCase()),
-    ),
-  )
+  const seen = new Set<string>()
+  const contacts: ContactEntry[] = []
+
+  for (const tag of event.tags) {
+    if (
+      tag[0] !== 'p' ||
+      typeof tag[1] !== 'string' ||
+      !/^[0-9a-f]{64}$/i.test(tag[1])
+    ) {
+      continue
+    }
+
+    const pubkey = tag[1].toLowerCase()
+
+    if (seen.has(pubkey)) continue
+
+    seen.add(pubkey)
+    contacts.push({
+      pubkey,
+      petname: typeof tag[3] === 'string' ? tag[3].trim() : '',
+    })
+  }
+
+  return contacts
 }
 
-export async function fetchContacts(pubkey: string): Promise<string[]> {
+export async function fetchContacts(pubkey: string): Promise<ContactEntry[]> {
   const latest = await latestEvent({
     kinds: [CONTACTS_KIND],
     authors: [pubkey],
     limit: 5,
   })
 
-  return contactPubkeys(latest)
+  return contactEntries(latest)
 }
 
 export async function updateContacts(
   identity: { pubkey: string; secretKey: Uint8Array },
   target: string,
   action: 'add' | 'remove',
-): Promise<string[]> {
+): Promise<ContactEntry[]> {
+  const normalizedTarget = target.toLowerCase()
   const latest = await latestEvent({
     kinds: [CONTACTS_KIND],
     authors: [identity.pubkey],
@@ -373,22 +391,23 @@ export async function updateContacts(
   })
   const currentTags = latest?.tags ?? []
   const alreadyIncluded = currentTags.some(
-    (tag) => tag[0] === 'p' && tag[1]?.toLowerCase() === target,
+    (tag) => tag[0] === 'p' && tag[1]?.toLowerCase() === normalizedTarget,
   )
 
   if (
     (action === 'add' && alreadyIncluded) ||
     (action === 'remove' && !alreadyIncluded) ||
-    target === identity.pubkey
+    normalizedTarget === identity.pubkey
   ) {
-    return contactPubkeys(latest)
+    return contactEntries(latest)
   }
 
   const tags =
     action === 'add'
-      ? [...currentTags, ['p', target]]
+      ? [...currentTags, ['p', normalizedTarget]]
       : currentTags.filter(
-          (tag) => !(tag[0] === 'p' && tag[1]?.toLowerCase() === target),
+          (tag) =>
+            !(tag[0] === 'p' && tag[1]?.toLowerCase() === normalizedTarget),
         )
   const event = finalizeEvent(
     {
@@ -407,7 +426,58 @@ export async function updateContacts(
       : "We couldn't remove that contact just now. Check your connection and try again.",
   )
 
-  return contactPubkeys(event)
+  return contactEntries(event)
+}
+
+export async function renameContact(
+  identity: { pubkey: string; secretKey: Uint8Array },
+  target: string,
+  name: string,
+): Promise<ContactEntry[]> {
+  const normalizedTarget = target.toLowerCase()
+  const petname = name.trim().slice(0, 100)
+  const latest = await latestEvent({
+    kinds: [CONTACTS_KIND],
+    authors: [identity.pubkey],
+    limit: 5,
+  })
+  const currentTags = latest?.tags ?? []
+  const alreadyIncluded = currentTags.some(
+    (tag) => tag[0] === 'p' && tag[1]?.toLowerCase() === normalizedTarget,
+  )
+
+  if (normalizedTarget === identity.pubkey) {
+    throw new Error("You don't need to name yourself.")
+  }
+
+  const tags = alreadyIncluded
+    ? currentTags.map((tag) => {
+        if (tag[0] !== 'p' || tag[1]?.toLowerCase() !== normalizedTarget) {
+          return tag
+        }
+
+        const relay = typeof tag[2] === 'string' ? tag[2] : ''
+
+        if (petname) return ['p', normalizedTarget, relay, petname]
+        return relay ? ['p', normalizedTarget, relay] : ['p', normalizedTarget]
+      })
+    : [...currentTags, ['p', normalizedTarget, '', petname]]
+  const event = finalizeEvent(
+    {
+      kind: CONTACTS_KIND,
+      created_at: nextCreatedAt(latest?.created_at),
+      tags,
+      content: latest?.content ?? '',
+    },
+    identity.secretKey,
+  )
+
+  await publishEvent(
+    event,
+    "We couldn't save that contact name. Check your connection and try again.",
+  )
+
+  return contactEntries(event)
 }
 
 export async function fetchRankings(

@@ -50,3 +50,11 @@ export function displayName(
 ): string {
   return profileName?.trim() || 'Someone'
 }
+
+export function displayContactName(
+  pubkey: string,
+  profileName: string | undefined,
+  petname: string | undefined,
+): string {
+  return petname?.trim() || displayName(pubkey, profileName)
+}

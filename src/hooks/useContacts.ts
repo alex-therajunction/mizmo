@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Identity } from '../lib/identity'
-import { fetchContacts, updateContacts } from '../lib/nostr'
+import {
+  fetchContacts,
+  renameContact,
+  updateContacts,
+  type ContactEntry,
+} from '../lib/nostr'
 
 type ContactState = {
   identityKey: string | null
-  contacts: string[]
+  entries: ContactEntry[]
   status: 'idle' | 'loading' | 'ready' | 'error'
   error: string
 }
@@ -12,7 +17,7 @@ type ContactState = {
 export function useContacts(identity: Identity | null) {
   const [state, setState] = useState<ContactState>({
     identityKey: null,
-    contacts: [],
+    entries: [],
     status: 'idle',
     error: '',
   })
@@ -27,7 +32,7 @@ export function useContacts(identity: Identity | null) {
         if (!active) return
         setState({
           identityKey: identity.pubkey,
-          contacts,
+          entries: contacts,
           status: 'ready',
           error: '',
         })
@@ -36,7 +41,7 @@ export function useContacts(identity: Identity | null) {
         if (!active) return
         setState({
           identityKey: identity.pubkey,
-          contacts: [],
+          entries: [],
           status: 'error',
           error:
             "We couldn't load your contacts. Check your connection and try again.",
@@ -53,7 +58,7 @@ export function useContacts(identity: Identity | null) {
       ? state
       : {
           identityKey: identity?.pubkey ?? null,
-          contacts: [],
+          entries: [],
           status: identity ? ('loading' as const) : ('idle' as const),
           error: '',
         }
@@ -62,10 +67,10 @@ export function useContacts(identity: Identity | null) {
     async (target: string, action: 'add' | 'remove') => {
       if (!identity) return
 
-      const contacts = await updateContacts(identity, target, action)
+      const entries = await updateContacts(identity, target, action)
       setState({
         identityKey: identity.pubkey,
-        contacts,
+        entries,
         status: 'ready',
         error: '',
       })
@@ -82,11 +87,42 @@ export function useContacts(identity: Identity | null) {
     [change],
   )
 
+  const rename = useCallback(
+    async (target: string, name: string) => {
+      if (!identity) return
+
+      const entries = await renameContact(identity, target, name)
+      setState({
+        identityKey: identity.pubkey,
+        entries,
+        status: 'ready',
+        error: '',
+      })
+    },
+    [identity],
+  )
+
+  const contacts = useMemo(
+    () => current.entries.map((contact) => contact.pubkey),
+    [current.entries],
+  )
+  const contactNames = useMemo(
+    () =>
+      Object.fromEntries(
+        current.entries
+          .filter((contact) => contact.petname)
+          .map((contact) => [contact.pubkey, contact.petname]),
+      ),
+    [current.entries],
+  )
+
   return {
-    contacts: current.contacts,
+    contacts,
+    contactNames,
     status: current.status,
     error: current.error,
     addContact,
     removeContact,
+    renameContact: rename,
   }
 }

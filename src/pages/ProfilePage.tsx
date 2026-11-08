@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { nip19 } from 'nostr-tools'
 import { AuthPanel } from '../components/AuthPanel'
@@ -24,6 +30,7 @@ import type { SentEmailInvite } from '../lib/emailInvites'
 import type { Identity } from '../lib/identity'
 import {
   copyText,
+  displayContactName,
   displayName,
   formatDeadline,
   formatEventTime,
@@ -391,9 +398,11 @@ function OwnDashboard({ identity }: { identity: Identity }) {
   } = useSentEmailInvites(identity)
   const {
     contacts,
+    contactNames,
     status: contactsStatus,
     error: contactsError,
     addContact,
+    renameContact,
     removeContact,
   } = useContacts(identity)
   const {
@@ -410,6 +419,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     setOutboxOrder,
     archiveRecord,
     restoreRecord,
+    deleteRecord,
   } = useMizmoRankings(identity)
   const [tab, setTab] = useState<'mi' | 'mo' | 'archive'>('mi')
   const [selectedContact, setSelectedContact] = useState<string | null>(null)
@@ -458,6 +468,40 @@ function OwnDashboard({ identity }: { identity: Identity }) {
     () => new Set(rankings.archived),
     [rankings.archived],
   )
+  const deletedIds = useMemo(
+    () => new Set(rankings.deleted),
+    [rankings.deleted],
+  )
+  const autoAddedContacts = useRef(new Set<string>())
+
+  useEffect(() => {
+    if (contactsStatus === 'loading') return
+
+    const nextContact = sentEmailInvites.find((invite) => {
+      const recipient = invite.recipient
+
+      return Boolean(
+        invite.status === 'accepted' &&
+          recipient &&
+          recipient !== identity.pubkey &&
+          !contacts.includes(recipient) &&
+          !autoAddedContacts.current.has(recipient),
+      )
+    })?.recipient
+
+    if (!nextContact) return
+
+    autoAddedContacts.current.add(nextContact)
+    addContact(nextContact).catch(() => {
+      autoAddedContacts.current.delete(nextContact)
+    })
+  }, [
+    addContact,
+    contacts,
+    contactsStatus,
+    identity.pubkey,
+    sentEmailInvites,
+  ])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
@@ -484,14 +528,16 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       orderedInbox.filter(
         (record) =>
           !archivedIds.has(record.id) &&
+          !deletedIds.has(record.id) &&
           (!activeContact || record.counterparty === activeContact),
       ),
-    [activeContact, archivedIds, orderedInbox],
+    [activeContact, archivedIds, deletedIds, orderedInbox],
   )
   const outboxGroups = useMemo(() => {
     const visible = outbox.filter(
       (record) =>
         !archivedIds.has(record.id) &&
+        !deletedIds.has(record.id) &&
         (!activeContact || record.counterparty === activeContact),
     )
     const grouped = new Map<string, MizmoRecord[]>()
@@ -515,33 +561,45 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         Math.max(...b.records.map((record) => record.createdAt)) -
         Math.max(...a.records.map((record) => record.createdAt)),
     )
-  }, [activeContact, archivedIds, outbox, rankings])
+  }, [activeContact, archivedIds, deletedIds, outbox, rankings])
   const visibleSentEmailInvites = useMemo(
     () =>
-      sentEmailInvites.filter((invite) => !archivedIds.has(invite.eventId)),
-    [archivedIds, sentEmailInvites],
+      sentEmailInvites.filter(
+        (invite) =>
+          !archivedIds.has(invite.eventId) &&
+          !deletedIds.has(invite.eventId),
+      ),
+    [archivedIds, deletedIds, sentEmailInvites],
   )
   const archivedSentEmailInvites = useMemo(
     () =>
-      sentEmailInvites.filter((invite) => archivedIds.has(invite.eventId)),
-    [archivedIds, sentEmailInvites],
+      sentEmailInvites.filter(
+        (invite) =>
+          archivedIds.has(invite.eventId) &&
+          !deletedIds.has(invite.eventId),
+      ),
+    [archivedIds, deletedIds, sentEmailInvites],
   )
   const archivedMizmos = useMemo(
     () =>
       orderRecords(
-        [...inbox, ...outbox].filter((record) =>
-          archivedIds.has(record.id),
+        [...inbox, ...outbox].filter(
+          (record) =>
+            archivedIds.has(record.id) && !deletedIds.has(record.id),
         ),
         rankings.archived,
         (record) => record.id,
         (record) => record.createdAt,
       ),
-    [archivedIds, inbox, outbox, rankings.archived],
+    [archivedIds, deletedIds, inbox, outbox, rankings.archived],
   )
   const archivedCount =
     archivedMizmos.length + archivedSentEmailInvites.length
   const inboxIds = orderedInbox
-    .filter((record) => !archivedIds.has(record.id))
+    .filter(
+      (record) =>
+        !archivedIds.has(record.id) && !deletedIds.has(record.id),
+    )
     .map((record) => record.id)
   const visibleInboxIds = filteredInbox.map((record) => record.id)
   const visibleEmailInviteCount = activeContact
@@ -553,10 +611,11 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       0,
     ) + visibleEmailInviteCount
   const selectedName = activeContact
-    ? displayName(
+    ? displayContactName(
         activeContact,
         profiles[activeContact]?.displayName ||
           profiles[activeContact]?.name,
+        contactNames[activeContact],
       )
     : null
 
@@ -641,6 +700,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         {tab === 'mo' && (
           <MoComposer
             contacts={contacts}
+            contactNames={contactNames}
             emailContacts={emailContacts}
             identity={identity}
             inviterName={inviterName}
@@ -654,6 +714,7 @@ function OwnDashboard({ identity }: { identity: Identity }) {
         {tab !== 'archive' && (
           <ContactFilter
             contacts={contacts}
+            contactNames={contactNames}
             loading={contactsStatus === 'loading' || profilesLoading}
             onManage={() => setContactsOpen(true)}
             onSelect={setSelectedContact}
@@ -681,9 +742,10 @@ function OwnDashboard({ identity }: { identity: Identity }) {
             filteredInbox.length > 0 ? (
               filteredInbox.map((record, index) => (
                 <MizmoCard
+                  contactName={contactNames[record.counterparty]}
                   key={record.id}
                   now={now}
-                  onArchive={() => archiveRecord(record.id)}
+                  onDone={() => archiveRecord(record.id)}
                   profile={profiles[record.counterparty]}
                   record={record}
                   reorder={
@@ -713,19 +775,22 @@ function OwnDashboard({ identity }: { identity: Identity }) {
             <>
               {!activeContact && visibleSentEmailInvites.length > 0 && (
                 <EmailInvitesOutbox
+                  contactNames={contactNames}
                   invites={visibleSentEmailInvites}
                   now={now}
-                  onArchive={archiveRecord}
+                  onDone={archiveRecord}
                   onRefresh={refreshSentEmailInvites}
+                  onRenameContact={renameContact}
                   profiles={profiles}
                 />
               )}
               {outboxGroups.map((group) => {
               const ids = group.records.map((record) => record.id)
               const profile = profiles[group.pubkey]
-              const name = displayName(
+              const name = displayContactName(
                 group.pubkey,
                 profile?.displayName || profile?.name,
+                contactNames[group.pubkey],
               )
 
               return (
@@ -750,9 +815,10 @@ function OwnDashboard({ identity }: { identity: Identity }) {
                   <div className="outbox-group-list">
                     {group.records.map((record, index) => (
                       <MizmoCard
+                        contactName={contactNames[record.counterparty]}
                         key={record.id}
                         now={now}
-                        onArchive={() => archiveRecord(record.id)}
+                        onDone={() => archiveRecord(record.id)}
                         profile={profile}
                         record={record}
                         reorder={
@@ -818,8 +884,10 @@ function OwnDashboard({ identity }: { identity: Identity }) {
             <>
               {archivedMizmos.map((record) => (
                 <MizmoCard
+                  contactName={contactNames[record.counterparty]}
                   key={record.id}
                   now={now}
+                  onDelete={() => deleteRecord(record.id)}
                   onRestore={() => restoreRecord(record.id)}
                   profile={profiles[record.counterparty]}
                   record={record}
@@ -827,8 +895,10 @@ function OwnDashboard({ identity }: { identity: Identity }) {
               ))}
               {archivedSentEmailInvites.length > 0 && (
                 <EmailInvitesOutbox
+                  contactNames={contactNames}
                   invites={archivedSentEmailInvites}
                   now={now}
+                  onDelete={deleteRecord}
                   onRestore={restoreRecord}
                   profiles={profiles}
                   title="Archived email invitations"
@@ -852,12 +922,14 @@ function OwnDashboard({ identity }: { identity: Identity }) {
       {contactsOpen && (
         <ContactManager
           contacts={contacts}
+          contactNames={contactNames}
           emailContacts={emailContacts}
           identity={identity}
           loadError={contactsError}
           onAdd={addContact}
           onAddEmail={addEmailContact}
           onClose={() => setContactsOpen(false)}
+          onRename={renameContact}
           onRemove={handleRemoveContact}
           onRemoveEmail={removeEmailContact}
           status={contactsStatus}
@@ -871,17 +943,23 @@ function EmailInvitesOutbox({
   invites,
   now,
   profiles,
-  onArchive,
+  contactNames,
+  onDone,
   onRestore,
+  onDelete,
   onRefresh,
+  onRenameContact,
   title = 'Email invitations',
 }: {
   invites: SentEmailInvite[]
   now: number
   profiles: Record<string, ProfileData | null>
-  onArchive?: (eventId: string) => void
+  contactNames: Record<string, string>
+  onDone?: (eventId: string) => void
   onRestore?: (eventId: string) => void
+  onDelete?: (eventId: string) => void
   onRefresh?: () => void
+  onRenameContact?: (pubkey: string, name: string) => Promise<void>
   title?: string
 }) {
   const pending = invites.filter((invite) => invite.status === 'pending').length
@@ -917,10 +995,13 @@ function EmailInvitesOutbox({
       <div className="outbox-group-list">
         {invites.map((invite) => (
           <EmailInviteCard
+            contactNames={contactNames}
             invite={invite}
             key={invite.id}
             now={now}
-            onArchive={onArchive}
+            onDelete={onDelete}
+            onDone={onDone}
+            onRenameContact={onRenameContact}
             onRestore={onRestore}
             profiles={profiles}
           />
@@ -934,23 +1015,37 @@ function EmailInviteCard({
   invite,
   now,
   profiles,
-  onArchive,
+  contactNames,
+  onDone,
   onRestore,
+  onDelete,
+  onRenameContact,
 }: {
   invite: SentEmailInvite
   now: number
   profiles: Record<string, ProfileData | null>
-  onArchive?: (eventId: string) => void
+  contactNames: Record<string, string>
+  onDone?: (eventId: string) => void
   onRestore?: (eventId: string) => void
+  onDelete?: (eventId: string) => void
+  onRenameContact?: (pubkey: string, name: string) => Promise<void>
 }) {
+  const [naming, setNaming] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameBusy, setNameBusy] = useState(false)
+  const [nameError, setNameError] = useState('')
   const accepted = invite.status === 'accepted' && invite.recipient !== null
   const recipientProfile = invite.recipient
     ? profiles[invite.recipient]
     : null
+  const contactName = invite.recipient
+    ? contactNames[invite.recipient]
+    : undefined
   const recipientName = invite.recipient
-    ? displayName(
+    ? displayContactName(
         invite.recipient,
         recipientProfile?.displayName || recipientProfile?.name,
+        contactName,
       )
     : invite.email || 'Invitation link'
   const overdue = invite.deadline !== null && invite.deadline < now
@@ -958,6 +1053,35 @@ function EmailInviteCard({
     invite.acceptedAt !== null
       ? `Request received · ${formatEventTime(invite.acceptedAt)}`
       : 'Request received'
+
+  const beginNaming = () => {
+    if (!invite.recipient) return
+    setNameDraft(contactName ?? '')
+    setNameError('')
+    setNaming(true)
+  }
+
+  const saveName = async (event: FormEvent) => {
+    event.preventDefault()
+
+    if (!invite.recipient || !onRenameContact) return
+
+    setNameBusy(true)
+    setNameError('')
+
+    try {
+      await onRenameContact(invite.recipient, nameDraft)
+      setNaming(false)
+    } catch (caught) {
+      setNameError(
+        caught instanceof Error
+          ? caught.message
+          : 'That contact name could not be saved.',
+      )
+    } finally {
+      setNameBusy(false)
+    }
+  }
 
   return (
     <article
@@ -999,6 +1123,38 @@ function EmailInviteCard({
           : 'Waiting for them to open the link and accept.'}
       </p>
 
+      {accepted && naming && onRenameContact && (
+        <form className="contact-name-form email-invite-name-form" onSubmit={saveName}>
+          <label className="field">
+            <span className="field-label">Your name for them</span>
+            <input
+              aria-label={`Name for ${recipientName}`}
+              autoFocus
+              className="text-input"
+              maxLength={100}
+              onChange={(event) => setNameDraft(event.target.value)}
+              placeholder={recipientName}
+              value={nameDraft}
+            />
+          </label>
+          <button
+            className="button button--primary button--small"
+            disabled={nameBusy}
+            type="submit"
+          >
+            {nameBusy ? 'Saving…' : 'Save name'}
+          </button>
+          <button
+            className="text-button contact-name-cancel"
+            onClick={() => setNaming(false)}
+            type="button"
+          >
+            Cancel
+          </button>
+          {nameError && <p className="form-error">{nameError}</p>}
+        </form>
+      )}
+
       <div className="mizmo-card-bottom">
         {accepted && invite.recipient ? (
           <Link
@@ -1039,14 +1195,20 @@ function EmailInviteCard({
               No deadline
             </span>
           )}
-          {onArchive && (
+          {accepted && onRenameContact && !naming && (
+            <button className="card-action" onClick={beginNaming} type="button">
+              <Icon name="edit" size={14} />
+              {contactName ? 'Rename contact' : 'Name contact'}
+            </button>
+          )}
+          {onDone && (
             <button
               className="card-action"
-              onClick={() => onArchive(invite.eventId)}
+              onClick={() => onDone(invite.eventId)}
               type="button"
             >
-              <Icon name="archive" size={14} />
-              Archive
+              <Icon name="check" size={14} />
+              Mark done
             </button>
           )}
           {onRestore && (
@@ -1057,6 +1219,16 @@ function EmailInviteCard({
             >
               <Icon name="restore" size={14} />
               Restore
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className="card-action card-action--danger"
+              onClick={() => onDelete(invite.eventId)}
+              type="button"
+            >
+              <Icon name="trash" size={14} />
+              Delete
             </button>
           )}
         </div>
@@ -1095,7 +1267,7 @@ function EmptyBox({
       </h3>
       <p>
         {tab === 'archive'
-          ? 'Archived asks will stay here until you restore them.'
+          ? 'Archived asks will stay here until you restore or delete them.'
           : filtered
           ? 'Choose All to see the rest of your list.'
           : tab === 'mi'

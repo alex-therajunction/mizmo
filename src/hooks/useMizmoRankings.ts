@@ -260,6 +260,27 @@ export function useMizmoRankings(identity: Identity | null) {
     [commit],
   )
 
+  const deleteRecord = useCallback(
+    (id: string) => {
+      commit((currentRankings) => ({
+        ...currentRankings,
+        inbox: currentRankings.inbox.filter((entry) => entry !== id),
+        outbox: Object.fromEntries(
+          Object.entries(currentRankings.outbox).map(([pubkey, ids]) => [
+            pubkey,
+            ids.filter((entry) => entry !== id),
+          ]),
+        ),
+        archived: currentRankings.archived.filter((entry) => entry !== id),
+        deleted: [
+          id,
+          ...currentRankings.deleted.filter((entry) => entry !== id),
+        ],
+      }))
+    },
+    [commit],
+  )
+
   return {
     rankings: current.data ?? emptyRankings(),
     loaded: current.loaded,
@@ -269,5 +290,6 @@ export function useMizmoRankings(identity: Identity | null) {
     setOutboxOrder,
     archiveRecord,
     restoreRecord,
+    deleteRecord,
   }
 }
